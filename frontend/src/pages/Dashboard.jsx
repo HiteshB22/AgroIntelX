@@ -24,11 +24,15 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { data } = location.state || {};
 
+  // ✅ Unpack nested data
+  const inputData = data?.input_data || {};
+  const aiData = data?.ai_analysis || {};
+
   if (!data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-gray-700 bg-gray-50">
         <p className="text-lg mb-3">
-          ⚠️ No data found. Please analyze soil first.
+          ⚠ No data found. Please analyze soil first.
         </p>
         <button
           onClick={() => navigate(-1)}
@@ -40,15 +44,12 @@ const Dashboard = () => {
     );
   }
 
-  // ✅ Fixed PDF download using dom-to-image-more
   const handleDownloadPDF = async () => {
     const input = document.getElementById("report-section");
-
     try {
       const blob = await domtoimage.toBlob(input);
       const img = new Image();
       img.src = URL.createObjectURL(blob);
-
       img.onload = () => {
         const pdf = new jsPDF("p", "mm", "a4");
         const width = pdf.internal.pageSize.getWidth();
@@ -61,7 +62,7 @@ const Dashboard = () => {
     }
   };
 
-  // Mock optimized reference values
+  // Reference values for radar chart
   const optimizedValues = {
     Nitrogen: 50,
     Phosphorus: 40,
@@ -70,10 +71,10 @@ const Dashboard = () => {
   };
 
   const radarData = [
-    { metric: "Nitrogen", user: data.Nitrogen, ai: optimizedValues.Nitrogen },
-    { metric: "Phosphorus", user: data.Phosphorus, ai: optimizedValues.Phosphorus },
-    { metric: "Potassium", user: data.Potassium, ai: optimizedValues.Potassium },
-    { metric: "pH", user: data.pH, ai: optimizedValues.pH },
+    { metric: "Nitrogen", user: inputData.Nitrogen, ai: optimizedValues.Nitrogen },
+    { metric: "Phosphorus", user: inputData.Phosphorus, ai: optimizedValues.Phosphorus },
+    { metric: "Potassium", user: inputData.Potassium, ai: optimizedValues.Potassium },
+    { metric: "pH", user: inputData.pH, ai: optimizedValues.pH },
   ];
 
   return (
@@ -109,12 +110,12 @@ const Dashboard = () => {
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[
-            { label: "District", value: data.District_Name },
-            { label: "Nitrogen (N)", value: data.Nitrogen },
-            { label: "Phosphorus (P)", value: data.Phosphorus },
-            { label: "Potassium (K)", value: data.Potassium },
-            { label: "pH Level", value: data.pH },
-            { label: "Rainfall (mm)", value: data.Rainfall },
+            { label: "District", value: inputData.District_Name },
+            { label: "Nitrogen (N)", value: inputData.Nitrogen },
+            { label: "Phosphorus (P)", value: inputData.Phosphorus },
+            { label: "Potassium (K)", value: inputData.Potassium },
+            { label: "pH Level", value: inputData.pH },
+            { label: "Rainfall (mm)", value: inputData.Rainfall },
           ].map((item, idx) => (
             <div
               key={idx}
@@ -138,7 +139,7 @@ const Dashboard = () => {
             <div className="bg-white border border-green-100 rounded-xl p-6 shadow-sm hover:shadow-md transition">
               <p className="text-sm text-gray-500 mb-1">Soil Health Grade</p>
               <p className="text-3xl font-extrabold text-green-700">
-                {data.soil_health_grade}
+                {aiData.soil_health_grade}
               </p>
               <p className="text-xs text-gray-500 mt-2">
                 Based on nutrient balance and pH stability
@@ -148,7 +149,7 @@ const Dashboard = () => {
             <div className="bg-white border border-green-100 rounded-xl p-6 shadow-sm hover:shadow-md transition">
               <p className="text-sm text-gray-500 mb-1">Condition Summary</p>
               <p className="text-green-700 font-medium leading-relaxed">
-                {data.soil_health_analysis}
+                {aiData.soil_health_analysis}
               </p>
             </div>
           </div>
@@ -170,7 +171,7 @@ const Dashboard = () => {
                   className="text-green-600"
                   strokeWidth="10"
                   strokeDasharray="430"
-                  strokeDashoffset={430 - (430 * data.soil_health_score) / 100}
+                  strokeDashoffset={430 - (430 * aiData.soil_health_score) / 100}
                   strokeLinecap="round"
                   stroke="currentColor"
                   fill="transparent"
@@ -182,7 +183,7 @@ const Dashboard = () => {
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <p className="text-3xl font-bold text-green-700">
-                  {data.soil_health_score}%
+                  {aiData.soil_health_score}%
                 </p>
                 <span className="text-sm text-gray-600">Health Score</span>
               </div>
@@ -227,13 +228,13 @@ const Dashboard = () => {
             <Sprout size={20} /> Recommended Crop
           </h3>
           <p className="text-2xl font-bold text-green-700">
-            {data.recommended_crop}
+            {aiData.recommended_crop}
           </p>
           <h4 className="font-semibold mt-4 text-gray-700">
             Top Crop Suggestions:
           </h4>
           <ul className="mt-2 text-gray-700 text-sm">
-            {data.top_crops?.map((crop, idx) => (
+            {aiData.top_crops?.map((crop, idx) => (
               <li key={idx}>
                 • {crop.crop} — {crop.probability}%
               </li>
@@ -246,13 +247,13 @@ const Dashboard = () => {
             <TrendingUp size={20} /> Recommended Fertilizer
           </h3>
           <p className="text-2xl font-bold text-green-700">
-            {data.recommended_fertilizer}
+            {aiData.recommended_fertilizer}
           </p>
           <h4 className="font-semibold mt-4 text-gray-700">
             Top Fertilizer Options:
           </h4>
           <ul className="mt-2 text-gray-700 text-sm">
-            {data.top_fertilizers?.map((fert, idx) => (
+            {aiData.top_fertilizers?.map((fert, idx) => (
               <li key={idx}>
                 • {fert.fertilizer} — {fert.probability}%
               </li>
@@ -267,7 +268,7 @@ const Dashboard = () => {
           📊 Crop Probability Visualization
         </h3>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={data.top_crops}>
+          <BarChart data={aiData.top_crops}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="crop" />
             <YAxis />
@@ -281,4 +282,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default Dashboard;

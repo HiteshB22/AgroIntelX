@@ -40,11 +40,11 @@ ANALYSIS_SCHEMA_DICT = {
         "soil_health_grade": {"type": "string"},
         "recommended_crop": {"type": "string"},
         "recommended_fertilizer": {"type": "string"},
-        "top_5_crops": {
+        "top_crops": {
             "type": "array",
             "items": {"type": "object", "properties": {"crop": {"type": "string"}, "probability": {"type": "number"}}}
         },
-        "top_5_fertilizers": {
+        "top_fertilizers": {
             "type": "array",
             "items": {"type": "object", "properties": {"fertilizer": {"type": "string"}, "probability": {"type": "number"}}}
         }
@@ -89,7 +89,7 @@ async def analyze_soil_report(file: UploadFile = File(...)):
         )
 
         extraction_response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.5-flash", #"gemini-pro-latest"
             contents=[uploaded_file, extraction_prompt], # Pass the uploaded file object directly
             config=extraction_config
         )
@@ -103,12 +103,33 @@ async def analyze_soil_report(file: UploadFile = File(...)):
 
         # --- Step 5: Structured AI Soil Analysis ---
         analysis_prompt = f"""
-        You are an agricultural expert.
-        Based on the extracted soil data below, analyze soil health for Maharashtra and
-        provide insights and recommendations strictly following this schema:
-        
-        Extracted Soil Data:
-        {json.dumps(extracted_data, indent=2)}
+            You are an agricultural expert.
+            Based on the extracted soil data below, analyze soil health for Maharashtra and
+            provide insights and recommendations strictly following this schema:
+            for eg:
+            {{
+            "soil_health_analysis": "🧭short summary about soil like this -> Soil Health Analysis: Nitrogen: Moderate, Phosphorus: Moderate, Potassium: Moderate, Soil pH: 8.0, Rainfall: Moderate",
+            "soil_health_score": "70.00",
+            "soil_health_grade": "Good",
+            "recommended_crop": "Ginger",
+            "recommended_fertilizer": "DAP",
+            "top_crops": [
+                {{"crop": "Ginger", "probability": 35.5}},
+                {{"crop": "Cotton", "probability": 21.5}},
+                {{"crop": "Groundnut", "probability": 16}},
+                {{"crop": "Wheat", "probability": 13.5}},
+                {{"crop": "Jowar", "probability": 8.5}}
+            ],
+            "top_fertilizers": [
+                {{"fertilizer": "DAP", "probability": 31}},
+                {{"fertilizer": "Urea", "probability": 14}},
+                {{"fertilizer": "Ammonium Sulphate", "probability": 11.5}},
+                {{"fertilizer": "Magnesium Sulphate", "probability": 10.5}},
+                {{"fertilizer": "12:32:16 NPK", "probability": 9}}
+            ]
+            }}
+            Extracted Soil Data:
+            {json.dumps(extracted_data, indent=2)}
         """
 
         analysis_config = GenerateContentConfig(
