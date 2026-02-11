@@ -1,9 +1,15 @@
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
+
 import google.genai as genai
 from google.genai.types import GenerateContentConfig
-import os, json, re, traceback
+from google.api_core.exceptions import ServiceUnavailable
+
+import os
+import json
+import traceback
+import time
 from tempfile import NamedTemporaryFile
 from json.decoder import JSONDecodeError
 
@@ -15,7 +21,21 @@ router = APIRouter()
 
 # --- Configure Gemini client ---
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-print("✅ Gemini API Key Configured (Multimodal PDF/Image Support)")
+print("Gemini API Key Configured")
+
+# 🔁 Toggle this for testing
+USE_GEMINI = True
+print(f"USE_GEMINI set to: {USE_GEMINI}")
+
+# --- Retry Helper ---
+def gemini_generate_with_retry(call_fn, retries=3, delay=1.5):
+    for attempt in range(retries):
+        try:
+            return call_fn()
+        except ServiceUnavailable:
+            if attempt == retries - 1:
+                raise
+            time.sleep(delay)
 
 # --- JSON Schemas ---
 EXTRACTION_SCHEMA_DICT = {
@@ -27,9 +47,15 @@ EXTRACTION_SCHEMA_DICT = {
         "Potassium": {"type": "number"},
         "Organic_Carbon": {"type": "number"},
         "pH": {"type": "number"},
-        "Rainfall": {"type": "number"}
+        "Rainfall": {"type": "number"},
+        "Sulphur": {"type": "number"},
+        "Zinc": {"type": "number"},
+        "Iron": {"type": "number"}
     },
-    "required": ["District_Name", "Nitrogen", "Phosphorus", "Potassium", "Organic_Carbon"]
+    "required": [
+        "District_Name", "Nitrogen", "Phosphorus",
+        "Potassium", "Organic_Carbon", "pH", "Rainfall"
+    ]
 }
 
 ANALYSIS_SCHEMA_DICT = {
@@ -42,135 +68,168 @@ ANALYSIS_SCHEMA_DICT = {
         "recommended_fertilizer": {"type": "string"},
         "top_crops": {
             "type": "array",
-            "items": {"type": "object", "properties": {"crop": {"type": "string"}, "probability": {"type": "number"}}}
+            "items": {
+                "type": "object",
+                "properties": {
+                    "crop": {"type": "string"},
+                    "probability": {"type": "number"}
+                }
+            }
         },
         "top_fertilizers": {
             "type": "array",
-            "items": {"type": "object", "properties": {"fertilizer": {"type": "string"}, "probability": {"type": "number"}}}
+            "items": {
+                "type": "object",
+                "properties": {
+                    "fertilizer": {"type": "string"},
+                    "probability": {"type": "number"}
+                }
+            }
         }
     },
-    "required": ["soil_health_analysis", "soil_health_score", "soil_health_grade", "recommended_crop", "recommended_fertilizer"]
+    "required": [
+        "soil_health_analysis",
+        "soil_health_score",
+        "soil_health_grade",
+        "recommended_crop",
+        "recommended_fertilizer"
+    ]
 }
 
 @router.post("/analyze-soil-report")
 async def analyze_soil_report(file: UploadFile = File(...)):
-    tmp_path = None # Initialize tmp_path for cleanup
-    uploaded_file = None # Initialize uploaded_file for cleanup
+
+    tmp_path = None
+    uploaded_file = None
 
     try:
-        # --- Step 1: Validate file type ---
-        allowed_types = ["application/pdf", "image/png", "image/jpeg"]
-        if file.content_type not in allowed_types:
-            return JSONResponse(status_code=400, content={"error": "Unsupported file type. Please upload PDF or image (PNG/JPG)."})
+        # -------- STEP 1: Read file --------
+        file_bytes = await file.read()
+        if not file_bytes:
+            raise HTTPException(400, "Empty PDF received")
 
-        # --- Step 2: Temporarily save the uploaded file ---
-        # The file MUST be saved to disk before uploading to the Gemini API
-        with NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp:
-            tmp.write(await file.read())
+        # Optional size guard
+        if len(file_bytes) > 5 * 1024 * 1024:
+            raise HTTPException(400, "PDF too large (max 5MB)")
+
+        # -------- STEP 2: Save temp PDF --------
+        with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            tmp.write(file_bytes)
             tmp_path = tmp.name
 
-        # --- Step 3: Upload to Gemini (FIXED) ---
-        # CORRECT METHOD is client.files.upload()
-        uploaded_file = client.files.upload(file=tmp_path)
-        print(f"✅ Uploaded file: {uploaded_file.name}")
+        # -------- STEP 3: Upload to Gemini --------
+        if USE_GEMINI:
+            uploaded_file = client.files.upload(file=tmp_path)
 
-        # --- Step 4: Structured Data Extraction ---
-        extraction_prompt = f"""
-        You are a data extraction AI.
-        Analyze the attached soil report (PDF or image) and extract values for:
-        District Name, Available Nitrogen (as N), Available Phosphorus, Available Potassium, 
-        Organic Carbon, pH, and Rainfall. If a value is not present, use null.
-        Strictly return the result as a valid JSON conforming to the schema.
-        """
-        
-        extraction_config = GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=EXTRACTION_SCHEMA_DICT
-        )
+        # -------- STEP 4: Extraction --------
+        if USE_GEMINI:
+            extraction_prompt = """
+            You are a data extraction AI.
+            Extract:
+            District Name, Nitrogen, Phosphorus, Potassium,
+            Organic Carbon, pH, Rainfall, Sulphur, Zinc, Iron.
+            Return STRICT JSON only.
+            """
 
-        extraction_response = client.models.generate_content(
-            model="gemini-2.5-flash", #"gemini-pro-latest"
-            contents=[uploaded_file, extraction_prompt], # Pass the uploaded file object directly
-            config=extraction_config
-        )
+            extraction_config = GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=EXTRACTION_SCHEMA_DICT
+            )
 
-        # Parse the extracted data (add robust JSON parsing)
-        try:
-            extracted_data = json.loads(extraction_response.text.strip())
-        except JSONDecodeError:
-            raise ValueError(f"Failed to parse extraction JSON. Raw Output: {extraction_response.text}")
+            extraction_response = gemini_generate_with_retry(
+                lambda: client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=[uploaded_file, extraction_prompt],
+                    config=extraction_config
+                )
+            )
 
+            extracted_data = json.loads(extraction_response.text)
 
-        # --- Step 5: Structured AI Soil Analysis ---
-        analysis_prompt = f"""
+        else:
+            extracted_data = {
+                "District_Name": "Kolhapur",
+                "Nitrogen": 45,
+                "Phosphorus": 32,
+                "Potassium": 40,
+                "Organic_Carbon": 0.75,
+                "pH": 6.8,
+                "Rainfall": 900,
+                "Sulphur": 10,
+                "Zinc": 1.2,
+                "Iron": 3.5
+            }
+
+        # -------- STEP 5: Analysis --------
+        if USE_GEMINI:
+            analysis_prompt = f"""
             You are an agricultural expert.
-            Based on the extracted soil data below, analyze soil health for Maharashtra and
-            provide insights and recommendations strictly following this schema:
-            for eg:
-            {{
-            "soil_health_analysis": "🧭short summary about soil like this -> Soil Health Analysis: Nitrogen: Moderate, Phosphorus: Moderate, Potassium: Moderate, Soil pH: 8.0, Rainfall: Moderate",
-            "soil_health_score": "70.00",
-            "soil_health_grade": "Good",
-            "recommended_crop": "Ginger",
-            "recommended_fertilizer": "DAP",
-            "top_crops": [
-                {{"crop": "Ginger", "probability": 35.5}},
-                {{"crop": "Cotton", "probability": 21.5}},
-                {{"crop": "Groundnut", "probability": 16}},
-                {{"crop": "Wheat", "probability": 13.5}},
-                {{"crop": "Jowar", "probability": 8.5}}
-            ],
-            "top_fertilizers": [
-                {{"fertilizer": "DAP", "probability": 31}},
-                {{"fertilizer": "Urea", "probability": 14}},
-                {{"fertilizer": "Ammonium Sulphate", "probability": 11.5}},
-                {{"fertilizer": "Magnesium Sulphate", "probability": 10.5}},
-                {{"fertilizer": "12:32:16 NPK", "probability": 9}}
-            ]
-            }}
-            Extracted Soil Data:
+            Analyze this soil data:
+
             {json.dumps(extracted_data, indent=2)}
-        """
 
-        analysis_config = GenerateContentConfig(
-            response_mime_type="application/json",
-            response_schema=ANALYSIS_SCHEMA_DICT
-        )
+            Return STRICT JSON only.sample schema->
+            "soil_health_analysis": "Balanced soil with moderate nutrients.",
+                "soil_health_score": "75",
+                "soil_health_grade": "Good",
+                "recommended_crop": "Cotton",
+                "recommended_fertilizer": "DAP",
+                "top_crops": [],
+                "top_fertilizers": []
+            """
 
-        analysis_response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[analysis_prompt],
-            config=analysis_config
-        )
+            analysis_config = GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=ANALYSIS_SCHEMA_DICT
+            )
 
-        # Parse the AI analysis
-        try:
-            ai_analysis = json.loads(analysis_response.text.strip())
-        except JSONDecodeError:
-            raise ValueError(f"Failed to parse analysis JSON. Raw Output: {analysis_response.text}")
+            analysis_response = gemini_generate_with_retry(
+                lambda: client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=[analysis_prompt],
+                    config=analysis_config
+                )
+            )
 
+            ai_analysis = json.loads(analysis_response.text)
 
-        # --- Step 6: Return both outputs ---
+        else:
+            ai_analysis = {
+                "soil_health_analysis": "Balanced soil with moderate nutrients.",
+                "soil_health_score": "75",
+                "soil_health_grade": "Good",
+                "recommended_crop": "Cotton",
+                "recommended_fertilizer": "DAP",
+                "top_crops": [],
+                "top_fertilizers": []
+            }
+
+        # -------- STEP 6: Response --------
         return JSONResponse(content={
             "extracted_data": extracted_data,
-            "ai_analysis": ai_analysis
+            "ai_analysis_data": ai_analysis
         })
 
-    except ValueError as ve:
-        # Handle custom ValueErrors (like JSON parsing failure)
-        print("❌ Value Error:\n", traceback.format_exc())
-        return JSONResponse(status_code=500, content={"error": str(ve)})
+    except ServiceUnavailable:
+        return JSONResponse(
+            status_code=200,
+            content={
+                "error": "AI service temporarily unavailable. Try again later.",
+                "extracted_data": extracted_data if 'extracted_data' in locals() else None,
+                "ai_analysis_data": None
+            }
+        )
 
-    except Exception as e:
-        # Catch any other unhandled errors
-        print("❌ Backend Error:\n", traceback.format_exc())
-        return JSONResponse(status_code=500, content={"error": f"An unexpected error occurred: {str(e)}"})
+    except Exception:
+        print("PDF Insight Error:\n", traceback.format_exc())
+        raise HTTPException(status_code=500, detail="Internal processing error")
 
     finally:
-        # --- Step 7: Cleanup: Delete temporary file and uploaded file ---
+        try:
+            if uploaded_file:
+                client.files.delete(name=uploaded_file.name)
+        except Exception:
+            pass
+
         if tmp_path and os.path.exists(tmp_path):
             os.remove(tmp_path)
-            print(f"🧹 Deleted local temporary file: {tmp_path}")
-        if uploaded_file:
-            client.files.delete(name=uploaded_file.name)
-            print(f"🗑️ Deleted Gemini uploaded file: {uploaded_file.name}")

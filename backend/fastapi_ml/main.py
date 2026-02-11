@@ -15,10 +15,10 @@ import os
 # --- Load environment variables ---
 load_dotenv()
 
-# ✅ Initialize FastAPI app
+# Initialize FastAPI app
 app = FastAPI(title="Crop & Fertilizer Prediction API")
 
-# ✅ Add CORS Middleware
+# Add CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,11 +26,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ Initialize Gemini client
+# Initialize Gemini client
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-print("✅ Gemini API Key Configured (Main.py)")
+print("Gemini API Key Configured (Main.py)")
 
-# ✅ Load ML models and encoders
+#Load ML models and encoders
 rf_crop = joblib.load("model/crop_model.pkl")
 rf_fertilizer = joblib.load("model/fert_model.pkl")
 encoders = joblib.load("model/encoders.pkl")
@@ -40,7 +40,7 @@ le_crop = encoders["crop"]
 le_fertilizer = encoders["fertilizer"]
 
 
-# ✅ Define input structure
+#Define input structure
 class SoilData(BaseModel):
     District_Name: str
     Nitrogen: float
@@ -50,7 +50,7 @@ class SoilData(BaseModel):
     Rainfall: float
 
 
-# ✅ Prediction Route with Gemini Fallback
+#Prediction Route with Gemini Fallback
 @app.post("/predict")
 def predict_crop(data: SoilData):
     try:
@@ -89,7 +89,7 @@ def predict_crop(data: SoilData):
             for idx in top_ferts_idx
         ]
 
-        # ✅ Step 6: Return ML Result (in required format)
+        #Step 6: Return ML Result (in required format)
         return {
             "source": "ML Model",
             "soil_health_analysis": details,
@@ -102,7 +102,7 @@ def predict_crop(data: SoilData):
         }
 
     except Exception as e:
-        print("⚠️ ML model failed, switching to Gemini fallback.")
+        print("ML model failed, switching to Gemini fallback.")
         print(traceback.format_exc())
 
         # --- Step 7: Gemini Fallback ---
@@ -143,7 +143,7 @@ def predict_crop(data: SoilData):
             raw_text = getattr(response, "text", getattr(response, "output_text", "")).strip()
             fallback_result = json.loads(raw_text)
 
-            # ✅ Return same structured output
+            #Return same structured output
             return {
                 "soil_health_analysis": fallback_result.get("soil_health_analysis", "Analysis unavailable."),
                 "soil_health_score": fallback_result.get("soil_health_score", "0"),
@@ -155,17 +155,17 @@ def predict_crop(data: SoilData):
             }
 
         except Exception as llm_err:
-            print("❌ Gemini fallback also failed:", llm_err)
+            print("Gemini fallback also failed:", llm_err)
             return {
                 "error": "Both ML model and Gemini fallback failed.",
                 "details": str(llm_err)
             }
 
 
-# ✅ Register PDF Insight Route
+#Register PDF Insight Route
 app.include_router(pdf_insight.router, prefix="/api", tags=["Soil PDF Insights"])
 
-# ✅ Root Route
+#Root Route
 @app.get("/")
 def home():
     return {"message": "🌱 AgroX FastAPI Backend Running Successfully"}

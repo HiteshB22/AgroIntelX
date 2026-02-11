@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 import AnalysisResult from "./AnalysisResult";
+import { UploadCloud, FileText, Loader2 } from "lucide-react";
 
 const FileUpload = () => {
   const [file, setFile] = useState(null);
@@ -8,81 +9,112 @@ const FileUpload = () => {
   const [submitted, setSubmitted] = useState(false);
   const [analysisData, setAnalysisData] = useState(null);
   const [error, setError] = useState(null);
-  const handleFileChange = (e) => setFile(e.target.files[0]);
+
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+    setError(null);
+  };
 
   const handleUpload = async () => {
     if (!file) {
-      alert("Please select a file first!");
+      setError("Please select a PDF file.");
       return;
     }
 
     setUploading(true);
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("pdf", file);
+    formData.append("source", "pdf");
 
     try {
-      const response = await axios.post(
-        "http://localhost:8000/api/analyze-soil-report", 
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
+      const response = await api.post("/soil/analyze", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
-      if (response.status === 200) {
-        console.log("Server response:", response.data);
-        console.log("Server response:", response.data.ai_analysis);
-        console.log("Server response:", response.data.extracted_data);
-
-        setAnalysisData(response.data);
-        setSubmitted(true);
-      } else {
-        setError("File upload failed. Please try again.");
-      }
-    } catch (error) {
-      console.error("❌ Error uploading file:", error);
-      setError("Error uploading file.");
+      setAnalysisData(response.data.data);
+      setSubmitted(true);
+    } catch (err) {
+      setError("File upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
   };
-  {error && <p className="text-red-600 mt-2">{error}</p>}
+
   if (submitted) return <AnalysisResult data={analysisData} />;
 
   return (
-    <div className="border rounded-lg p-8 bg-white shadow-sm text-center">
-      <div className="border-2 border-dashed border-gray-300 rounded-lg py-12">
-        <p className="text-gray-700 mb-3">Drag and drop your file</p>
-        <p className="text-sm text-gray-500 mb-4">or click to browse</p>
+    <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-md p-8">
+      {/* Header */}
+      <div className="text-center mb-6">
+        <h3 className="text-xl font-semibold text-gray-800">
+          Upload Soil Report
+        </h3>
+        <p className="text-sm text-gray-500 mt-1">
+          Supported format: PDF only
+        </p>
+      </div>
 
-        <label className="cursor-pointer bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-md">
+      {/* Upload Box */}
+      <div className="border-2 border-dashed border-green-300 rounded-xl p-8 text-center hover:border-green-500 transition">
+        <UploadCloud className="mx-auto text-green-600 mb-3" size={40} />
+
+        <p className="text-gray-700 font-medium">
+          Click to upload your soil report
+        </p>
+
+        <p className="text-xs text-gray-500 mt-1">
+          Max size depends on your server config
+        </p>
+
+        <label className="inline-block mt-4 cursor-pointer">
+          <span className="bg-green-700 hover:bg-green-800 transition text-white px-5 py-2 rounded-md text-sm font-medium">
+            Choose PDF
+          </span>
           <input
             type="file"
             className="hidden"
             onChange={handleFileChange}
-            accept=".pdf,.jpg,.jpeg,.png,.csv"
+            accept=".pdf"
           />
-          Select File
         </label>
 
+        {/* File Preview */}
         {file && (
-          <p className="mt-3 text-green-700 text-sm">Uploaded: {file.name}</p>
+          <div className="mt-4 inline-flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 px-3 py-1.5 rounded-full text-sm">
+            <FileText size={16} />
+            <span className="truncate max-w-[200px]">{file.name}</span>
+          </div>
         )}
       </div>
 
+      {/* Error */}
+      {error && (
+        <div className="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
+          {error}
+        </div>
+      )}
+
+      {/* Action Button */}
       <button
         onClick={handleUpload}
         disabled={!file || uploading}
-        className={`mt-6 px-6 py-2 rounded-md font-semibold text-white ${
-          uploading ? "bg-gray-500" : "bg-green-700 hover:bg-green-800"
-        }`}
+        className={`mt-6 w-full flex items-center justify-center gap-2 py-3 rounded-lg font-semibold text-white transition
+          ${
+            uploading
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-green-700 hover:bg-green-800"
+          }
+        `}
       >
-        {uploading ? "Analyzing..." : "Upload & Analyze"}
+        {uploading ? (
+          <>
+            <Loader2 className="animate-spin" size={18} />
+            Analyzing Soil Report...
+          </>
+        ) : (
+          "Upload & Analyze"
+        )}
       </button>
-
-      <p className="text-sm text-gray-500 mt-4">
-        Supported formats: PDF, JPG, PNG, CSV
-      </p>
-
-      
     </div>
   );
 };

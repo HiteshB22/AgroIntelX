@@ -15,6 +15,7 @@ const ManualInputForm = () => {
 
   const [submitted, setSubmitted] = useState(false);
   const [resultData, setResultData] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -22,59 +23,79 @@ const ManualInputForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    try {
-      toast.loading("Analyzing soil data...");
+    // Basic frontend validation
+    if (!formData.District_Name) {
+      toast.error("District name is required");
+      return;
+    }
 
-      // Send data to Node.js API (which forwards to FastAPI)
-      const res = await axios.post("http://localhost:5000/api/predict", {
-        District_Name: formData.District_Name,
-        Nitrogen: parseFloat(formData.Nitrogen),
-        Phosphorus: parseFloat(formData.Phosphorus),
-        Potassium: parseFloat(formData.Potassium),
-        pH: parseFloat(formData.pH),
-        Rainfall: parseFloat(formData.Rainfall),
+    try {
+      setLoading(true);
+      const toastId = toast.loading("Analyzing soil data...");
+
+      const res = await axios.post("http://localhost:5000/api/soil/analyze", {
+        source: "manual",
+        nutrients: JSON.stringify({
+          District_Name: formData.District_Name,
+          Nitrogen: parseFloat(formData.Nitrogen),
+          Phosphorus: parseFloat(formData.Phosphorus),
+          Potassium: parseFloat(formData.Potassium),
+          pH: parseFloat(formData.pH),
+          Rainfall: parseFloat(formData.Rainfall),
+        }),
       });
 
-      toast.dismiss();
+      toast.dismiss(toastId);
 
-      if (res.data) {
+      if (res.data?.data) {
         toast.success("✅ Analysis Completed!");
-        setResultData(res.data);
+        setResultData(res.data.data);
         setSubmitted(true);
       } else {
         toast.error("No response data from server.");
       }
     } catch (err) {
       toast.dismiss();
-      console.error(err);
-      toast.error("Failed to analyze soil data.");
+      console.error("Manual analysis error:", err);
+      toast.error(
+        err.response?.data?.message || "Failed to analyze soil data."
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (submitted) return <AnalysisResult data={resultData} inputValues={formData}/>;
+  if (submitted)
+    return <AnalysisResult data={resultData} inputValues={formData} />;
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="border rounded-lg p-8 bg-white shadow-md max-w-2xl mx-auto"
+      className="border rounded-2xl p-8 bg-white shadow-md max-w-2xl mx-auto"
     >
-      <h2 className="text-xl font-semibold mb-4 text-gray-700">
-        🌾 Soil Input Analysis Form
+      <h2 className="text-xl font-semibold mb-1 text-gray-700">
+        🌾 Soil Input Analysis
       </h2>
+      <p className="text-sm text-gray-500 mb-6">
+        Enter your soil nutrient values to get AI-powered crop & fertilizer
+        recommendations.
+      </p>
 
-      <div className="grid grid-cols-2 gap-6">
-        <div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {/* District */}
+        <div className="sm:col-span-2">
           <label className="block font-medium mb-1">District Name *</label>
           <input
             name="District_Name"
             value={formData.District_Name}
             onChange={handleChange}
-            className="border rounded-md w-full p-2"
+            className="border rounded-md w-full p-2 focus:ring-2 focus:ring-green-600 outline-none"
             placeholder="e.g. Nashik"
             required
           />
         </div>
 
+        {/* Nitrogen */}
         <div>
           <label className="block font-medium mb-1">Nitrogen (ppm) *</label>
           <input
@@ -83,12 +104,13 @@ const ManualInputForm = () => {
             onChange={handleChange}
             type="number"
             step="any"
-            className="border rounded-md w-full p-2"
+            className="border rounded-md w-full p-2 focus:ring-2 focus:ring-green-600 outline-none"
             placeholder="e.g. 45"
             required
           />
         </div>
 
+        {/* Phosphorus */}
         <div>
           <label className="block font-medium mb-1">Phosphorus (ppm) *</label>
           <input
@@ -97,12 +119,13 @@ const ManualInputForm = () => {
             onChange={handleChange}
             type="number"
             step="any"
-            className="border rounded-md w-full p-2"
+            className="border rounded-md w-full p-2 focus:ring-2 focus:ring-green-600 outline-none"
             placeholder="e.g. 35"
             required
           />
         </div>
 
+        {/* Potassium */}
         <div>
           <label className="block font-medium mb-1">Potassium (ppm) *</label>
           <input
@@ -111,12 +134,13 @@ const ManualInputForm = () => {
             onChange={handleChange}
             type="number"
             step="any"
-            className="border rounded-md w-full p-2"
+            className="border rounded-md w-full p-2 focus:ring-2 focus:ring-green-600 outline-none"
             placeholder="e.g. 150"
             required
           />
         </div>
 
+        {/* pH */}
         <div>
           <label className="block font-medium mb-1">pH Value *</label>
           <input
@@ -125,13 +149,14 @@ const ManualInputForm = () => {
             onChange={handleChange}
             type="number"
             step="any"
-            className="border rounded-md w-full p-2"
+            className="border rounded-md w-full p-2 focus:ring-2 focus:ring-green-600 outline-none"
             placeholder="e.g. 6.8"
             required
           />
         </div>
 
-        <div>
+        {/* Rainfall */}
+        <div className="sm:col-span-2">
           <label className="block font-medium mb-1">Rainfall (mm) *</label>
           <input
             name="Rainfall"
@@ -139,7 +164,7 @@ const ManualInputForm = () => {
             onChange={handleChange}
             type="number"
             step="any"
-            className="border rounded-md w-full p-2"
+            className="border rounded-md w-full p-2 focus:ring-2 focus:ring-green-600 outline-none"
             placeholder="e.g. 120"
             required
           />
@@ -148,9 +173,14 @@ const ManualInputForm = () => {
 
       <button
         type="submit"
-        className="mt-6 bg-green-700 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-800 w-full"
+        disabled={loading}
+        className={`mt-8 w-full px-6 py-2 rounded-md font-semibold text-white transition ${
+          loading
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-green-700 hover:bg-green-800"
+        }`}
       >
-        Analyze
+        {loading ? "Analyzing..." : "Analyze Soil"}
       </button>
     </form>
   );

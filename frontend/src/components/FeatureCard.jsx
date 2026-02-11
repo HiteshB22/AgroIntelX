@@ -1,21 +1,26 @@
-import { Leaf, Cloud, AlertTriangle, BarChart3, MessageSquare, Shield } from "lucide-react";
+import { motion } from "framer-motion";
 
-const icons = {
-  Soil: Leaf,
-  Crop: Cloud,
-  Alerts: AlertTriangle,
-  Expert: MessageSquare,
-  Analytics: BarChart3,
-  Security: Shield,
-};
-
-const FeatureCard = ({ title, description, icon }) => {
+const FeatureCard = ({ title, description }) => {
   return (
-    <div className="bg-white border border-green-100 shadow-md hover:shadow-xl rounded-2xl p-8 transition-transform transform hover:-translate-y-2">
-      <div className="text-4xl mb-4">{icon}</div>
-      <h3 className="text-xl font-bold text-green-700 mb-2">{title}</h3>
-      <p className="text-gray-600 text-sm leading-relaxed">{description}</p>
-    </div>
+    <motion.div
+      whileHover={{ y: -10, scale: 1.02 }}
+      transition={{ type: "spring", stiffness: 200, damping: 15 }}
+      className="group relative"
+    >
+      <div className="glass-card p-8 rounded-2xl border border-white/60 backdrop-blur-xl bg-white/60 shadow-lg hover:shadow-2xl transition-all duration-300">
+        
+        {/* Accent Line */}
+        <div className="h-1 w-12 bg-green-600 mb-6 rounded-full"></div>
+
+        <h3 className="text-xl font-semibold text-gray-900 mb-3 group-hover:text-green-700 transition">
+          {title}
+        </h3>
+
+        <p className="text-gray-600 leading-relaxed">
+          {description}
+        </p>
+      </div>
+    </motion.div>
   );
 };
 

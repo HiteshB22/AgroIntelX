@@ -1,28 +1,51 @@
 @import "tailwindcss";
 
 
-/* @media (prefers-color-scheme: dark) {
-  :root {
-    color: #d1d5db;
-    background-color: #121212;
-  }
-  a:hover {
-    color: #818cf8;
-  }
-  button {
-    background-color: #1f1f1f;
+.nav-link {
+  @apply text-sm font-medium text-gray-700 hover:text-green-700 transition;
+}
+.icon-link {
+  @apply flex items-center gap-1 text-sm text-gray-700 hover:text-green-700 transition;
+}
+
+.primary-btn {
+  @apply bg-green-700 text-white px-8 py-3 rounded-xl text-lg font-semibold shadow hover:bg-green-800 transition;
+}
+.secondary-btn {
+  @apply border border-green-700 text-green-700 px-8 py-3 rounded-xl text-lg font-semibold hover:bg-green-50 transition;
+}
+.cta-btn {
+  @apply inline-block bg-white text-green-700 px-10 py-4 rounded-xl text-lg font-semibold shadow-lg hover:bg-green-100 transition;
+}
+
+/* Smooth font rendering */
+body {
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+/* Subtle hover glow for premium buttons */
+a:hover {
+  filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.4));
+}
+
+/* Fade-up animation (for non-Framer elements if needed) */
+.fade-up {
+  opacity: 0;
+  transform: translateY(30px);
+  animation: fadeUp 1s ease forwards;
+}
+
+@keyframes fadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-} */
+/* Parallax feel without JS */
+.parallax-bg {
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center;
+}
