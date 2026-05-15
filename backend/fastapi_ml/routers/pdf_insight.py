@@ -11,7 +11,6 @@ import json
 import traceback
 import time
 from tempfile import NamedTemporaryFile
-from json.decoder import JSONDecodeError
 
 # --- Load environment variables ---
 load_dotenv()
@@ -23,7 +22,7 @@ router = APIRouter()
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 print("Gemini API Key Configured")
 
-# 🔁 Toggle this for testing
+# Toggle Gemini
 USE_GEMINI = True
 print(f"USE_GEMINI set to: {USE_GEMINI}")
 
@@ -37,7 +36,7 @@ def gemini_generate_with_retry(call_fn, retries=3, delay=1.5):
                 raise
             time.sleep(delay)
 
-# --- JSON Schemas ---
+# -------- EXTRACTION SCHEMA --------
 EXTRACTION_SCHEMA_DICT = {
     "type": "object",
     "properties": {
@@ -53,11 +52,17 @@ EXTRACTION_SCHEMA_DICT = {
         "Iron": {"type": "number"}
     },
     "required": [
-        "District_Name", "Nitrogen", "Phosphorus",
-        "Potassium", "Organic_Carbon", "pH", "Rainfall"
+        "District_Name",
+        "Nitrogen",
+        "Phosphorus",
+        "Potassium",
+        "Organic_Carbon",
+        "pH",
+        "Rainfall"
     ]
 }
 
+# -------- ANALYSIS SCHEMA --------
 ANALYSIS_SCHEMA_DICT = {
     "type": "object",
     "properties": {
@@ -68,22 +73,28 @@ ANALYSIS_SCHEMA_DICT = {
         "recommended_fertilizer": {"type": "string"},
         "top_crops": {
             "type": "array",
+            "minItems": 3,
+            "maxItems": 5,
             "items": {
                 "type": "object",
                 "properties": {
-                    "crop": {"type": "string"},
+                    "crops": {"type": "string"},
                     "probability": {"type": "number"}
-                }
+                },
+                "required": ["crops", "probability"]
             }
         },
         "top_fertilizers": {
             "type": "array",
+            "minItems": 3,
+            "maxItems": 5,
             "items": {
                 "type": "object",
                 "properties": {
                     "fertilizer": {"type": "string"},
                     "probability": {"type": "number"}
-                }
+                },
+                "required": ["fertilizer", "probability"]
             }
         }
     },
@@ -92,9 +103,12 @@ ANALYSIS_SCHEMA_DICT = {
         "soil_health_score",
         "soil_health_grade",
         "recommended_crop",
-        "recommended_fertilizer"
+        "recommended_fertilizer",
+        "top_crops",
+        "top_fertilizers"
     ]
 }
+
 
 @router.post("/analyze-soil-report")
 async def analyze_soil_report(file: UploadFile = File(...)):
@@ -103,16 +117,16 @@ async def analyze_soil_report(file: UploadFile = File(...)):
     uploaded_file = None
 
     try:
-        # -------- STEP 1: Read file --------
+        # -------- STEP 1: Read PDF --------
         file_bytes = await file.read()
+
         if not file_bytes:
             raise HTTPException(400, "Empty PDF received")
 
-        # Optional size guard
         if len(file_bytes) > 5 * 1024 * 1024:
             raise HTTPException(400, "PDF too large (max 5MB)")
 
-        # -------- STEP 2: Save temp PDF --------
+        # -------- STEP 2: Save temp file --------
         with NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(file_bytes)
             tmp_path = tmp.name
@@ -121,13 +135,25 @@ async def analyze_soil_report(file: UploadFile = File(...)):
         if USE_GEMINI:
             uploaded_file = client.files.upload(file=tmp_path)
 
-        # -------- STEP 4: Extraction --------
+        # -------- STEP 4: Extract soil data --------
         if USE_GEMINI:
+
             extraction_prompt = """
-            You are a data extraction AI.
-            Extract:
-            District Name, Nitrogen, Phosphorus, Potassium,
-            Organic Carbon, pH, Rainfall, Sulphur, Zinc, Iron.
+            You are a soil report data extraction AI.
+
+            Extract the following values from the soil report:
+
+            District Name
+            Nitrogen
+            Phosphorus
+            Potassium
+            Organic Carbon
+            pH
+            Rainfall
+            Sulphur
+            Zinc
+            Iron
+
             Return STRICT JSON only.
             """
 
@@ -147,8 +173,9 @@ async def analyze_soil_report(file: UploadFile = File(...)):
             extracted_data = json.loads(extraction_response.text)
 
         else:
+
             extracted_data = {
-                "District_Name": "Kolhapur",
+                "District_Name": "Nanded",
                 "Nitrogen": 45,
                 "Phosphorus": 32,
                 "Potassium": 40,
@@ -160,22 +187,44 @@ async def analyze_soil_report(file: UploadFile = File(...)):
                 "Iron": 3.5
             }
 
-        # -------- STEP 5: Analysis --------
+        # -------- STEP 5: AI Soil Analysis --------
         if USE_GEMINI:
+
             analysis_prompt = f"""
             You are an agricultural expert.
-            Analyze this soil data:
+
+            Analyze the following soil data:
 
             {json.dumps(extracted_data, indent=2)}
 
-            Return STRICT JSON only.sample schema->
-            "soil_health_analysis": "Balanced soil with moderate nutrients.",
-                "soil_health_score": "75",
-                "soil_health_grade": "Good",
-                "recommended_crop": "Cotton",
-                "recommended_fertilizer": "DAP",
-                "top_crops": [],
-                "top_fertilizers": []
+            Return STRICT JSON ONLY in the format:
+
+            {{
+                "soil_health_analysis": "Short soil condition summary",
+                "soil_health_score": number between 0 and 100 string,
+                "soil_health_grade": "Excellent or Good or Average or Poor",
+                "recommended_crop": "Best crop",
+                "recommended_fertilizer": "Best fertilizer",
+                "top_crops": [
+                    {{"crops": "Crop1(name of the crop)", "probability": 0-100}},
+                    {{"crops": "Crop2(name of the crop)", "probability": 0-100}},
+                    {{"crops": "Crop3(name of the crop)", "probability": 0-100}},
+                    {{"crops": "Crop4(name of the crop)", "probability": 0-100}},
+                    {{"crops": "Crop5(name of the crop)", "probability": 0-100}}
+                ],
+                "top_fertilizers": [
+                    {{"fertilizer": "Fertilizer1(name of the fertilizer)", "probability": 0-100}},
+                    {{"fertilizer": "Fertilizer2(name of the fertilizer)", "probability": 0-100}},
+                    {{"fertilizer": "Fertilizer3(name of the fertilizer)", "probability": 0-100}},
+                    {{"fertilizer": "Fertilizer4(name of the fertilizer)", "probability": 0-100}},
+                    {{"fertilizer": "Fertilizer5(name of the fertilizer)", "probability": 0-100}}
+                ]
+            }}
+
+            Rules:
+            - Return exactly 5 crops and 5 fertilizers
+            - Probability must be numbers
+            - Do not include extra explanation 
             """
 
             analysis_config = GenerateContentConfig(
@@ -194,14 +243,27 @@ async def analyze_soil_report(file: UploadFile = File(...)):
             ai_analysis = json.loads(analysis_response.text)
 
         else:
+
             ai_analysis = {
-                "soil_health_analysis": "Balanced soil with moderate nutrients.",
+                "soil_health_analysis": "Nitrogen Moderate, Phosphorus Moderate, Potassium Moderate, pH 6.8, Rainfall Moderate",
                 "soil_health_score": "75",
                 "soil_health_grade": "Good",
                 "recommended_crop": "Cotton",
                 "recommended_fertilizer": "DAP",
-                "top_crops": [],
-                "top_fertilizers": []
+                "top_crops": [
+                    {"crops": "Cotton", "probability": 85},
+                    {"crops": "Wheat", "probability": 82},
+                    {"crops": "Rice", "probability": 80},
+                    {"crops": "Maize", "probability": 77},
+                    {"crops": "Soybean", "probability": 75}
+                ],
+                "top_fertilizers": [
+                    {"fertilizer": "DAP", "probability": 90},
+                    {"fertilizer": "Urea", "probability": 87},
+                    {"fertilizer": "NPK", "probability": 84},
+                    {"fertilizer": "Compost", "probability": 80},
+                    {"fertilizer": "Vermicompost", "probability": 78}
+                ]
             }
 
         # -------- STEP 6: Response --------
@@ -211,6 +273,7 @@ async def analyze_soil_report(file: UploadFile = File(...)):
         })
 
     except ServiceUnavailable:
+
         return JSONResponse(
             status_code=200,
             content={
@@ -221,10 +284,12 @@ async def analyze_soil_report(file: UploadFile = File(...)):
         )
 
     except Exception:
+
         print("PDF Insight Error:\n", traceback.format_exc())
         raise HTTPException(status_code=500, detail="Internal processing error")
 
     finally:
+
         try:
             if uploaded_file:
                 client.files.delete(name=uploaded_file.name)

@@ -1,12 +1,13 @@
 import { Navigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import LoadingSpinner from "./LoadingSpinner";
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuthStore();
 
-  if (loading) return <p className="text-center mt-10">Loading...</p>;
+  if (loading) return <LoadingSpinner message="Verifying authentication..." />;
 
-  if (!user) return <Navigate to="/login" />;
+  if (!user) return <Navigate to="/login" replace />;
 
   return children;
 };

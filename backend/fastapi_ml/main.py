@@ -53,6 +53,7 @@ class SoilData(BaseModel):
 #Prediction Route with Gemini Fallback
 @app.post("/predict")
 def predict_crop(data: SoilData):
+    print("Received prediction request with data:", data.dict())
     try:
         # --- Step 1: Prepare Input ---
         df = pd.DataFrame([{
@@ -72,15 +73,15 @@ def predict_crop(data: SoilData):
         score, status, details = calculate_soil_health(
             data.Nitrogen, data.Phosphorus, data.Potassium, data.pH, data.Rainfall
         )
-
+        print(f"ML Prediction - Crop: {pred_crop}, Fertilizer: {pred_fert}, Soil Health Score: {score}, Status: {status}")
         # --- Step 4: Top 5 Crops ---
         crop_probs = rf_crop.predict_proba(df)[0]
         top_crops_idx = crop_probs.argsort()[-5:][::-1]
         top_crops = [
-            {"crop": le_crop.inverse_transform([idx])[0], "probability": round(crop_probs[idx] * 100, 2)}
+            {"crops": le_crop.inverse_transform([idx])[0], "probability": round(crop_probs[idx] * 100, 2)}
             for idx in top_crops_idx
         ]
-
+        print("Top Crop Probabilities:", top_crops)
         # --- Step 5: Top 5 Fertilizers ---
         fert_probs = rf_fertilizer.predict_proba(df)[0]
         top_ferts_idx = fert_probs.argsort()[-5:][::-1]
@@ -88,7 +89,7 @@ def predict_crop(data: SoilData):
             {"fertilizer": le_fertilizer.inverse_transform([idx])[0], "probability": round(fert_probs[idx] * 100, 2)}
             for idx in top_ferts_idx
         ]
-
+        print("Top Fertilizer Probabilities:", top_fertilizers)
         #Step 6: Return ML Result (in required format)
         return {
             "source": "ML Model",
@@ -102,7 +103,7 @@ def predict_crop(data: SoilData):
         }
 
     except Exception as e:
-        print("ML model failed, switching to Gemini fallback.")
+        print("ML model failed, switching to Gemini fallback for manual input.")
         print(traceback.format_exc())
 
         # --- Step 7: Gemini Fallback ---
@@ -123,12 +124,12 @@ def predict_crop(data: SoilData):
 
         Output JSON Schema:
         {{
-            "soil_health_analysis": "Text summary of soil condition short summary for eg:Soil Health Analysis: Nitrogen: Moderate, Phosphorus: Moderate, Potassium: Moderate, Soil pH: 8.0, Rainfall: Moderate",
+            "soil_health_analysis": "Text in brief explanation summary of soil condition short summary for eg:Soil Health Analysis: Nitrogen: Moderate, Phosphorus: Moderate, Potassium: Moderate, Soil pH: 8.0, Rainfall: Moderate",
             "soil_health_score": "Numeric score out of 100",
             "soil_health_grade": "Excellent/Good/Average/Poor",
             "recommended_crop": "Best crop name",
             "recommended_fertilizer": "Best fertilizer name",
-            "top_crops": [{{"crop": "name", "probability": 0-100}}],
+            "top_crops": [{{"crops": "name", "probability": 0-100}}],
             "top_fertilizers": [{{"fertilizer": "name", "probability": 0-100}}]
         }}
         """
@@ -168,4 +169,4 @@ app.include_router(pdf_insight.router, prefix="/api", tags=["Soil PDF Insights"]
 #Root Route
 @app.get("/")
 def home():
-    return {"message": "🌱 AgroX FastAPI Backend Running Successfully"}
+    return {"message": "AgroX FastAPI Backend Running Successfully"}

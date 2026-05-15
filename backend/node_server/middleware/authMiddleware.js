@@ -3,7 +3,6 @@ import User from "../models/User.js";
 
 export const protect = async (req, res, next) => {
   const token = req.cookies.access_token;
-
   if (!token)
     return res.status(401).json({ message: "Not authenticated" });
 
@@ -17,6 +16,7 @@ export const protect = async (req, res, next) => {
     req.user = user;
     next();
   } catch (err) {
+    console.log("Auth Middleware - Error:", err);
     res.status(401).json({ message: "Invalid token" });
   }
 };

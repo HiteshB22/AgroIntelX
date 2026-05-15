@@ -41,4 +41,4 @@ joblib.dump({
     "fertilizer": le_fertilizer
 }, "model/encoders.pkl")
 
-print("✅ Models trained and saved successfully!")
+print("Models trained and saved successfully!")

@@ -38,6 +38,15 @@ const Chatbot = () => {
 
   // ---------------- Send Message ----------------
   const sendMessage = async ({ text, reportId, newChat }) => {
+    // Optimistic UI update: instantly show the user's message
+    setMessages((prev) => [
+      ...prev,
+      { sender: "user", message: text },
+    ]);
+    
+    // Set a localized loading state for the assistant's reply
+    setLoadingMessages(true);
+
     try {
       const payload = {
         message: text,
@@ -48,16 +57,9 @@ const Chatbot = () => {
 
       const res = await api.post("/chat/send", payload);
 
-      if (newChat) {
+      if (newChat && res.data.sessionId) {
         setSessions((prev) => [res.data, ...prev]);
         setActiveSession({ _id: res.data.sessionId });
-      }
-
-      if (res.data.userMessage) {
-        setMessages((prev) => [
-          ...prev,
-          { sender: "user", message: res.data.userMessage },
-        ]);
       }
 
       if (res.data.assistantMessage) {
@@ -68,14 +70,17 @@ const Chatbot = () => {
       }
     } catch (err) {
       console.error("Send message failed", err);
+      // Optional: Handle error state in UI
+    } finally {
+      // Clear the local loading state once the API responds or fails
+      setLoadingMessages(false);
     }
   };
 
   return (
-    <div className="h-screen w-full flex bg-[#f8fafc] overflow-hidden">
-
+    <div className="h-[calc(100vh-80px)] w-full flex bg-[#f8fafc] overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-72 shrink-0 border-r border-gray-200 bg-white">
+      <aside className="w-80 shrink-0 border-r border-gray-200 bg-white shadow-sm z-20">
         <ChatSidebar
           sessions={sessions}
           activeSession={activeSession}
@@ -88,7 +93,7 @@ const Chatbot = () => {
       </aside>
 
       {/* Chat Window */}
-      <main className="flex-1 flex flex-col bg-gradient-to-br from-white to-green-50">
+      <main className="flex-1 flex flex-col relative overflow-hidden bg-gray-50 z-10">
         <ChatWindow
           messages={messages}
           loading={loadingMessages}

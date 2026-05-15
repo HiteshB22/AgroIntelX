@@ -1,183 +1,235 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import FeatureCard from "../components/FeatureCard";
+import { useRef } from "react";
 
 const Home = () => {
+  const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end start"],
+  });
+
+  const yHero = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
+  const opacityHero = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+
   return (
-    <div className="bg-gradient-to-b from-green-50 via-white to-white text-gray-900">
+    <div className="bg-gray-50 text-gray-900 overflow-hidden" ref={containerRef}>
 
       {/* ================= HERO ================= */}
-      <section className="relative overflow-hidden">
-        {/* Background Glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_#bbf7d0,_transparent_60%)]"></div>
+      <section className="relative min-h-[90vh] flex items-center pt-20">
+        {/* Dynamic Background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-[10%] -right-[10%] w-[60%] h-[60%] rounded-full bg-brand-200/40 mix-blend-multiply filter blur-[100px] animate-blob"></div>
+          <div className="absolute top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-blue-100/40 mix-blend-multiply filter blur-[100px] animate-blob animation-delay-2000"></div>
+          <div className="absolute -bottom-[10%] left-[20%] w-[60%] h-[60%] rounded-full bg-brand-100/40 mix-blend-multiply filter blur-[100px] animate-blob animation-delay-4000"></div>
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay"></div>
+        </div>
 
-        <div className="relative max-w-7xl mx-auto px-6 py-28 grid md:grid-cols-2 gap-16 items-center">
-          
+        <div className="relative max-w-7xl mx-auto px-6 py-12 grid lg:grid-cols-2 gap-16 items-center w-full">
+
           {/* Left Content */}
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="space-y-8"
+            style={{ y: yHero, opacity: opacityHero }}
+            className="space-y-8 z-10"
           >
-            <span className="inline-block bg-green-100 text-green-800 px-4 py-1 rounded-full text-sm font-semibold">
-              🌱 AI for Smart Agriculture
-            </span>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-md border border-brand-100 shadow-sm"
+            >
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-500"></span>
+              </span>
+              <span className="text-sm font-bold text-brand-800 tracking-wide uppercase">AI-Powered Agriculture</span>
+            </motion.div>
 
-            <h1 className="text-5xl md:text-6xl font-extrabold leading-tight tracking-tight">
-              Transform Farming with <br />
-              <span className="text-green-700">AgroIntelX</span>
-            </h1>
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-5xl md:text-7xl font-extrabold leading-[1.1] tracking-tight text-gray-900 drop-shadow-sm"
+            >
+              Farming <br />
+              <span className="text-brand-600 drop-shadow-sm">
+                Reimagined
+              </span>
+            </motion.h1>
 
-            <p className="text-xl text-gray-600 leading-relaxed max-w-xl">
-              Analyze soil, predict crop success, and receive expert AI guidance.
-              Built for data-driven agriculture in the modern era.
-            </p>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-xl md:text-2xl text-gray-800 leading-relaxed max-w-xl font-medium"
+            >
+              Harness the power of AI to analyze soil, predict crop success, and maximize your yield with precision.
+            </motion.p>
 
-            <div className="flex gap-4">
-              <Link
-                to="/soil-analysis"
-                className="bg-green-700 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-800 transition shadow-md"
-              >
-                Get Started
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="flex flex-wrap gap-4 pt-4"
+            >
+              <Link to="/soil-analysis" className="cta-btn group flex items-center gap-2">
+                Get Started Free
+                <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
               </Link>
-              <Link
-                to="/about"
-                className="border border-green-700 text-green-700 px-8 py-3 rounded-lg text-lg font-semibold hover:bg-green-50 transition"
-              >
-                Learn More
+              <Link to="/about" className="secondary-btn flex items-center px-8 py-4 text-lg rounded-2xl bg-white/50 backdrop-blur-sm border-gray-200 shadow-sm hover:bg-white/80 text-gray-800">
+                How it works
               </Link>
-            </div>
+            </motion.div>
           </motion.div>
 
           {/* Right Visual */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="relative rounded-3xl overflow-hidden shadow-2xl"
+            initial={{ opacity: 0, scale: 0.9, rotateX: 10 }}
+            animate={{ opacity: 1, scale: 1, rotateX: 0 }}
+            transition={{ duration: 0.8, delay: 0.2, type: "spring" }}
+            className="relative z-10 perspective-1000 hidden lg:block"
           >
-            <img
-              src="https://images.unsplash.com/photo-1602867741746-6df80f40b3f6?auto=format&fit=crop&q=80&w=900"
-              alt="Smart Farming"
-              className="w-full h-[500px] object-cover"
-            />
+            <div className="relative rounded-xl overflow-hidden shadow-2xl ring-1 ring-white/50 transform-gpu transition-transform hover:scale-[1.02] duration-500">
+              <img
+                src="https://images.unsplash.com/photo-1705616458400-60593c810ade?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDQwfHx8ZW58MHx8fHx8"
+                alt="Smart Farming Dashboard"
+                className="w-full h-[600px] object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-tr from-brand-900/40 via-brand-800/10 to-transparent"></div>
 
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-green-900/70 via-green-800/40 to-transparent"></div>
-
-            {/* Overlay Text */}
-            <div className="absolute bottom-8 left-8 right-8 text-white">
-              <h2 className="text-3xl md:text-4xl font-bold mb-2">
-                Smart Farming Dashboard
-              </h2>
-              <p className="text-green-100 text-lg">
-                AI-powered soil analysis, crop planning, and real-time insights.
-              </p>
+              {/* Removed Floating UI Element Simulation as requested */}
             </div>
+
+            {/* Decorative blurs behind image */}
+            <div className="absolute -inset-4 bg-gradient-to-r from-brand-400 to-blue-400 opacity-20 blur-2xl -z-10 rounded-3xl"></div>
           </motion.div>
         </div>
       </section>
 
       {/* ================= FEATURES ================= */}
-      <section className="py-28 bg-white">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          
+      <section className="py-32 bg-white relative">
+        <div className="max-w-7xl mx-auto px-6">
+
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="max-w-3xl mx-auto mb-16"
+            viewport={{ once: true, margin: "-100px" }}
+            className="text-center max-w-3xl mx-auto mb-20"
           >
-            <h2 className="text-4xl md:text-5xl font-extrabold text-green-700 mb-4">
-              Built for the Future of Agriculture
-            </h2>
-            <p className="text-gray-600 text-lg leading-relaxed">
-              A complete AI platform that helps farmers make precise, data-driven
-              decisions to increase yield and sustainability.
+            <h2 className="text-brand-600 font-bold tracking-wide uppercase text-sm mb-3">Capabilities</h2>
+            <h3 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-6 tracking-tight">
+              Intelligence for Every Acre
+            </h3>
+            <p className="text-xl text-gray-500 leading-relaxed font-medium">
+              We process millions of data points to give you actionable insights, making your farm more productive and resilient.
             </p>
           </motion.div>
 
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-10">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
             <FeatureCard
               title="Soil Intelligence"
-              type="Soil"
               icon="🌱"
-              description="AI-powered analysis of nutrients, pH, and moisture for smarter decisions."
+              description="Deep AI analysis of NPK, pH, and moisture levels to precisely determine your soil's health and needs."
             />
             <FeatureCard
-              title="Crop Optimization"
-              type="Crop"
+              title="Yield Optimization"
               icon="🌾"
-              description="Personalized crop recommendations based on soil health and climate."
+              description="Personalized crop recommendations tailored to your specific microclimate and soil profile."
             />
             <FeatureCard
-              title="Real-Time Alerts"
-              type="Alerts"
+              title="Risk Mitigation"
               icon="⚡"
-              description="Get notified about risks, weather changes, and soil health instantly."
+              description="Proactive alerts for weather shifts, pest risks, and soil degradation before they impact your harvest."
             />
             <FeatureCard
-              title="AI Expert Chat"
-              type="Expert"
+              title="AI Agronomist"
               icon="💬"
-              description="Chat with an AI agronomy assistant trained on your farm data."
+              description="24/7 access to an expert AI assistant trained on global agronomy data and your farm's history."
             />
             <FeatureCard
-              title="Advanced Analytics"
-              type="Analytics"
+              title="Predictive Analytics"
               icon="📊"
-              description="Visualize trends, compare seasons, and track performance over time."
+              description="Visualize long-term trends, compare seasonal data, and predict future yields with high accuracy."
             />
             <FeatureCard
-              title="Enterprise Security"
-              type="Security"
+              title="Secure & Private"
               icon="🔒"
-              description="Your agricultural data is encrypted, private, and securely stored."
+              description="Bank-grade encryption ensures your proprietary farm data remains strictly yours."
             />
           </div>
         </div>
       </section>
 
       {/* ================= STATS ================= */}
-      <section className="py-24 bg-gradient-to-br from-green-50 to-white">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid md:grid-cols-3 gap-12 text-center">
-            <div>
-              <h3 className="text-5xl font-extrabold text-green-700">10,000+</h3>
-              <p className="text-gray-600 mt-2">Active Farmers</p>
-            </div>
-            <div>
-              <h3 className="text-5xl font-extrabold text-green-700">95%</h3>
-              <p className="text-gray-600 mt-2">Prediction Accuracy</p>
-            </div>
-            <div>
-              <h3 className="text-5xl font-extrabold text-green-700">50M+</h3>
-              <p className="text-gray-600 mt-2">Acres Analyzed</p>
-            </div>
+      <section className="py-24 bg-brand-900 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-brand-600/20 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3"></div>
+
+        <div className="relative max-w-7xl mx-auto px-6 border-y border-brand-800/50 py-16">
+          <div className="grid md:grid-cols-3 gap-12 text-center divide-y md:divide-y-0 md:divide-x divide-brand-800/50">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="px-4 py-8 md:py-0"
+            >
+              <h3 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white to-brand-200 mb-2">10k+</h3>
+              <p className="text-brand-300 font-medium text-lg uppercase tracking-wider">Active Farms</p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="px-4 py-8 md:py-0"
+            >
+              <h3 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white to-brand-200 mb-2">95%</h3>
+              <p className="text-brand-300 font-medium text-lg uppercase tracking-wider">Prediction Accuracy</p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="px-4 py-8 md:py-0"
+            >
+              <h3 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-white to-brand-200 mb-2">5M+</h3>
+              <p className="text-brand-300 font-medium text-lg uppercase tracking-wider">Acres Analyzed</p>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* ================= CTA ================= */}
-      <section className="py-28 bg-green-700 text-white">
-        <div className="max-w-5xl mx-auto px-6 text-center space-y-8">
-          <h2 className="text-4xl md:text-5xl font-extrabold">
-            Ready to Revolutionize Your Farming?
-          </h2>
-          <p className="text-green-100 text-lg max-w-3xl mx-auto">
-            Join thousands of farmers using AI to improve soil health, maximize
-            yield, and make confident agricultural decisions.
-          </p>
+      <section className="py-32 bg-white text-center px-6 relative">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-100/50 rounded-full blur-[100px] -z-10"></div>
 
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="max-w-4xl mx-auto glass border border-gray-100 p-12 md:p-20 rounded-[3rem] shadow-2xl relative overflow-hidden"
+        >
+          <div className="absolute right-0 top-0 w-64 h-64 bg-brand-500/10 rounded-full blur-3xl"></div>
+
+          <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-6 tracking-tight relative z-10">
+            Ready to Revolutionize Your Harvest?
+          </h2>
+          <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto font-medium relative z-10">
+            Join thousands of forward-thinking farmers using AI to maximize yield, improve soil health, and secure their future.
+          </p>
           <Link
             to="/signup"
-            className="inline-block bg-white text-green-700 px-10 py-4 rounded-lg text-lg font-semibold hover:bg-green-100 transition shadow-lg"
+            className="cta-btn relative z-10 px-12"
           >
-            Start Free Today
+            Create Free Account
           </Link>
-        </div>
+        </motion.div>
       </section>
 
     </div>

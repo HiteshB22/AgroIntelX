@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Send, Bot, User } from "lucide-react";
+import { Send, Bot, User, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 /* ---------------- Assistant Message Formatter ---------------- */
 const formatAssistantMessage = (text) => {
@@ -8,7 +9,7 @@ const formatAssistantMessage = (text) => {
   const lines = text.split("\n").filter(Boolean);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {lines.map((line, i) => {
         const cleanLine = line.replace(/\*\*/g, "").trim();
 
@@ -23,9 +24,9 @@ const formatAssistantMessage = (text) => {
           return (
             <h4
               key={i}
-              className="text-green-700 font-semibold mt-3 border-b border-green-200 pb-1"
+              className="text-brand-800 font-bold mt-4 border-b-2 border-brand-100 pb-2 flex items-center gap-2 text-[15px] uppercase tracking-wide"
             >
-              🌱 {cleanLine}
+              <Sparkles size={16} className="text-brand-500" /> {cleanLine}
             </h4>
           );
         }
@@ -38,9 +39,10 @@ const formatAssistantMessage = (text) => {
           return (
             <div
               key={i}
-              className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-md text-sm"
+              className="bg-red-50/80 border border-red-100 text-red-800 px-4 py-3 rounded-xl text-[15px] font-medium flex items-start gap-3 shadow-sm"
             >
-              ⚠️ {cleanLine}
+              <div className="mt-0.5 shrink-0">⚠️</div>
+              <p>{cleanLine}</p>
             </div>
           );
         }
@@ -54,9 +56,10 @@ const formatAssistantMessage = (text) => {
           return (
             <div
               key={i}
-              className="bg-green-50 border border-green-200 text-green-800 px-3 py-2 rounded-md text-sm"
+              className="bg-brand-50 border border-brand-100 text-brand-800 px-4 py-3 rounded-xl text-[15px] font-medium flex items-start gap-3 shadow-sm"
             >
-              ✅ {cleanLine}
+              <div className="mt-0.5 shrink-0">✅</div>
+              <p>{cleanLine}</p>
             </div>
           );
         }
@@ -64,7 +67,7 @@ const formatAssistantMessage = (text) => {
         // Bullet points
         if (cleanLine.startsWith("*")) {
           return (
-            <li key={i} className="ml-5 list-disc text-gray-700 text-sm">
+            <li key={i} className="ml-6 list-disc text-gray-700 text-[15px] marker:text-brand-500 pl-1">
               {cleanLine.replace("*", "")}
             </li>
           );
@@ -72,7 +75,7 @@ const formatAssistantMessage = (text) => {
 
         // Normal paragraph
         return (
-          <p key={i} className="text-gray-700 text-sm leading-relaxed">
+          <p key={i} className="text-gray-700 text-[15px] leading-relaxed">
             {cleanLine}
           </p>
         );
@@ -103,92 +106,146 @@ const ChatWindow = ({ messages, loading, onSend, activeSession }) => {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-white relative">
+      <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none mix-blend-overlay"></div>
 
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 bg-white">
-        <h2 className="text-lg font-semibold text-gray-800">
-          🌱 AgroIntelX AI Assistant
-        </h2>
-        <p className="text-sm text-gray-500">
-          Ask about soil health, crops, fertilizers, and reports
-        </p>
+      <div className="px-8 py-5 border-b border-gray-100 bg-white/80 backdrop-blur-xl z-10 sticky top-0 flex items-center gap-4">
+        <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
+          <Bot size={22} />
+        </div>
+        <div>
+          <h2 className="text-xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+            AgroIntelX Assistant
+            <span className="px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 text-[10px] uppercase font-bold tracking-widest">Beta</span>
+          </h2>
+          <p className="text-sm text-gray-500 font-medium">
+            AI-powered agronomic insights
+          </p>
+        </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-8 space-y-8 custom-scrollbar z-0">
         {messages.length === 0 && !loading && (
-          <div className="text-center text-gray-500 mt-20">
-            <p className="text-lg font-medium">Start a new conversation</p>
-            <p className="text-sm mt-2">
-              Ask about your soil report, crops, or fertilizer plan.
+          <div className="h-full flex flex-col items-center justify-center max-w-md mx-auto text-center">
+            <div className="w-20 h-20 bg-brand-50 rounded-full flex items-center justify-center mb-6 border-8 border-white shadow-sm">
+              <Sparkles size={32} className="text-brand-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">How can I help today?</h3>
+            <p className="text-gray-500 font-medium leading-relaxed">
+              Ask me to analyze your soil report, suggest optimal crops, or generate a tailored fertilizer plan.
             </p>
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+              {["What crops are best for pH 6.5?", "Suggest a fertilizer plan", "Analyze my NPK levels"].map((suggestion, i) => (
+                <button
+                  key={i}
+                  onClick={() => setInput(suggestion)}
+                  className="px-4 py-3 bg-white border border-gray-100 rounded-xl text-left text-sm font-medium text-gray-600 hover:border-brand-300 hover:text-brand-700 hover:shadow-sm transition-all text-ellipsis overflow-hidden whitespace-nowrap"
+                >
+                  "{suggestion}"
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`flex items-start gap-3 ${
-              msg.sender === "user" ? "justify-end" : "justify-start"
-            }`}
-          >
-            {msg.sender === "assistant" && (
-              <div className="p-2 rounded-full bg-green-100 text-green-700">
-                <Bot size={18} />
-              </div>
-            )}
-
-            <div
-              className={`max-w-[72%] px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                msg.sender === "user"
-                  ? "bg-green-700 text-white rounded-br-sm"
-                  : "bg-white text-gray-800 border border-gray-200 rounded-bl-sm"
+        <AnimatePresence>
+          {messages.map((msg, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`flex items-start gap-4 ${
+                msg.sender === "user" ? "flex-row-reverse" : "flex-row"
               }`}
             >
-              {msg.sender === "assistant"
-                ? formatAssistantMessage(msg.message)
-                : msg.message}
-            </div>
+              {msg.sender === "assistant" && (
+                <div className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-white shrink-0 mt-1 shadow-sm">
+                  <Bot size={16} />
+                </div>
+              )}
 
-            {msg.sender === "user" && (
-              <div className="p-2 rounded-full bg-gray-200 text-gray-700">
-                <User size={18} />
+              <div
+                className={`max-w-[85%] md:max-w-[75%] px-5 py-4 text-[15px] leading-relaxed shadow-sm ${
+                  msg.sender === "user"
+                    ? "bg-gray-900 text-white rounded-2xl rounded-tr-sm"
+                    : "bg-white border border-gray-100 rounded-2xl rounded-tl-sm text-gray-800"
+                }`}
+              >
+                {msg.sender === "assistant"
+                  ? formatAssistantMessage(msg.message)
+                  : msg.message}
               </div>
-            )}
-          </div>
-        ))}
 
-        {loading && (
-          <div className="flex items-center gap-2 text-gray-500">
-            <Bot size={16} />
-            <span className="text-sm italic">AgroIntelX is thinking...</span>
-          </div>
-        )}
+              {msg.sender === "user" && (
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 shrink-0 mt-1">
+                  <User size={16} />
+                </div>
+              )}
+            </motion.div>
+          ))}
+
+          {loading && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-start gap-4"
+            >
+              <div className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-white shrink-0 mt-1 shadow-sm">
+                <Bot size={16} />
+              </div>
+              <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm px-5 py-4 shadow-sm flex items-center gap-2">
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 rounded-full bg-brand-400 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-2 h-2 rounded-full bg-brand-400 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-2 h-2 rounded-full bg-brand-400 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
-      <form
-        onSubmit={handleSubmit}
-        className="border-t border-gray-200 bg-white p-4 flex items-center gap-3"
-      >
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about soil, crops, fertilizers..."
-          className="flex-1 px-4 py-3 rounded-xl border border-gray-300 bg-gray-50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
-        />
-
-        <button
-          type="submit"
-          className="bg-green-700 hover:bg-green-800 text-white p-3 rounded-xl transition shadow"
+      <div className="p-4 md:p-6 bg-transparent z-10">
+        <form
+          onSubmit={handleSubmit}
+          className="relative max-w-4xl mx-auto flex items-end gap-2 bg-white border border-gray-200 rounded-[2rem] p-2 shadow-lg shadow-gray-200/50 focus-within:border-brand-400 focus-within:ring-4 focus-within:ring-brand-50 transition-all"
         >
-          <Send size={18} />
-        </button>
-      </form>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
+            placeholder={loading ? "Waiting for response..." : "Message AgroIntelX..."}
+            disabled={loading}
+            className="flex-1 max-h-32 min-h-[44px] px-4 py-3 bg-transparent text-gray-800 text-[15px] focus:outline-none resize-none custom-scrollbar disabled:opacity-50"
+            rows={1}
+          />
+
+          <button
+            type="submit"
+            disabled={!input.trim() || loading}
+            className={`p-3 rounded-full flex shrink-0 items-center justify-center transition-all ${
+              input.trim() && !loading
+                ? "bg-brand-600 text-white shadow-md hover:bg-brand-700 hover:scale-105" 
+                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+            }`}
+          >
+            <Send size={18} className={input.trim() && !loading ? "translate-x-0.5 -translate-y-0.5" : ""} />
+          </button>
+        </form>
+        <div className="text-center mt-3">
+          <p className="text-xs text-gray-400">AgroIntelX AI can make mistakes. Verify important agronomic information.</p>
+        </div>
+      </div>
     </div>
   );
 };

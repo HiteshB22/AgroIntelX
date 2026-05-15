@@ -14,7 +14,10 @@ const soilReportSchema = new mongoose.Schema(
       required: true,
     },
 
-    pdfUrl: String,
+    pdfUrl: {
+      type: String,
+      default: null,
+    },
 
     extracted_input_data: {
       district: String,
@@ -27,17 +30,32 @@ const soilReportSchema = new mongoose.Schema(
       sulphur: Number,
       zinc: Number,
       iron: Number,
-      Rainfall: Number,
+      rainfall: Number,
     },
 
     analysis: {
       soil_health_analysis: String,
+
       soil_health_score: String,
+
       soil_health_grade: String,
       recommended_crop: String,
-      recommended_fertilizers: String,
-      top_crops: Array,
-      top_fertilizers: Array,
+      recommended_fertilizer: String,
+
+      // ✅ STRUCTURED ARRAYS
+      top_crops: [
+        {
+          crops: String,
+          probability: Number,
+        }
+      ],
+
+      top_fertilizers: [
+        {
+          fertilizer: String,
+          probability: Number,
+        }
+      ],
     },
   },
   { timestamps: true }

@@ -2,6 +2,33 @@ import React, { useState } from "react";
 import AnalysisResult from "./AnalysisResult";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { Loader2 } from "lucide-react";
+
+// MOVE THIS OUTSIDE (fixes focus issue)
+const InputField = ({
+  label,
+  name,
+  type = "text",
+  placeholder,
+  colSpan = 1,
+  value,
+  onChange,
+}) => (
+  <div className={`${colSpan === 2 ? "sm:col-span-2" : ""}`}>
+    <label className="block text-sm font-bold text-gray-600 mb-1">
+      {label}
+    </label>
+    <input
+      type={type}
+      name={name}
+      value={value || ""}
+      onChange={onChange}
+      step={type === "number" ? "any" : undefined}
+      placeholder={placeholder}
+      className="w-full px-4 py-3 border-2 border-gray-100 rounded-xl outline-none focus:border-brand-500 transition-colors bg-white"
+    />
+  </div>
+);
 
 const ManualInputForm = () => {
   const [formData, setFormData] = useState({
@@ -17,13 +44,22 @@ const ManualInputForm = () => {
   const [resultData, setResultData] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const parseNumber = (val) => {
+    return val === "" ? null : parseFloat(val);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Basic frontend validation
     if (!formData.District_Name) {
       toast.error("District name is required");
       return;
@@ -33,17 +69,23 @@ const ManualInputForm = () => {
       setLoading(true);
       const toastId = toast.loading("Analyzing soil data...");
 
-      const res = await axios.post("http://localhost:5000/api/soil/analyze", {
-        source: "manual",
-        nutrients: JSON.stringify({
-          District_Name: formData.District_Name,
-          Nitrogen: parseFloat(formData.Nitrogen),
-          Phosphorus: parseFloat(formData.Phosphorus),
-          Potassium: parseFloat(formData.Potassium),
-          pH: parseFloat(formData.pH),
-          Rainfall: parseFloat(formData.Rainfall),
-        }),
-      });
+      const res = await axios.post(
+        "http://localhost:5000/api/soil/analyze",
+        {
+          source: "manual",
+          nutrients: JSON.stringify({
+            District_Name: formData.District_Name,
+            Nitrogen: parseNumber(formData.Nitrogen),
+            Phosphorus: parseNumber(formData.Phosphorus),
+            Potassium: parseNumber(formData.Potassium),
+            pH: parseNumber(formData.pH),
+            Rainfall: parseNumber(formData.Rainfall),
+          }),
+        },
+        {
+          withCredentials: true,
+        }
+      );
 
       toast.dismiss(toastId);
 
@@ -69,118 +111,87 @@ const ManualInputForm = () => {
     return <AnalysisResult data={resultData} inputValues={formData} />;
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="border rounded-2xl p-8 bg-white shadow-md max-w-2xl mx-auto"
-    >
-      <h2 className="text-xl font-semibold mb-1 text-gray-700">
-        🌾 Soil Input Analysis
-      </h2>
-      <p className="text-sm text-gray-500 mb-6">
-        Enter your soil nutrient values to get AI-powered crop & fertilizer
-        recommendations.
-      </p>
+    <form onSubmit={handleSubmit} className="w-full">
+      <div className="text-center mb-8">
+        <h3 className="text-2xl font-bold text-gray-900 mb-2">
+          Manual Parameters
+        </h3>
+        <p className="text-gray-500 font-medium">
+          Enter precise soil values for AI evaluation.
+        </p>
+      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {/* District */}
-        <div className="sm:col-span-2">
-          <label className="block font-medium mb-1">District Name *</label>
-          <input
-            name="District_Name"
-            value={formData.District_Name}
-            onChange={handleChange}
-            className="border rounded-md w-full p-2 focus:ring-2 focus:ring-green-600 outline-none"
-            placeholder="e.g. Nashik"
-            required
-          />
-        </div>
-
-        {/* Nitrogen */}
-        <div>
-          <label className="block font-medium mb-1">Nitrogen (ppm) *</label>
-          <input
-            name="Nitrogen"
-            value={formData.Nitrogen}
-            onChange={handleChange}
-            type="number"
-            step="any"
-            className="border rounded-md w-full p-2 focus:ring-2 focus:ring-green-600 outline-none"
-            placeholder="e.g. 45"
-            required
-          />
-        </div>
-
-        {/* Phosphorus */}
-        <div>
-          <label className="block font-medium mb-1">Phosphorus (ppm) *</label>
-          <input
-            name="Phosphorus"
-            value={formData.Phosphorus}
-            onChange={handleChange}
-            type="number"
-            step="any"
-            className="border rounded-md w-full p-2 focus:ring-2 focus:ring-green-600 outline-none"
-            placeholder="e.g. 35"
-            required
-          />
-        </div>
-
-        {/* Potassium */}
-        <div>
-          <label className="block font-medium mb-1">Potassium (ppm) *</label>
-          <input
-            name="Potassium"
-            value={formData.Potassium}
-            onChange={handleChange}
-            type="number"
-            step="any"
-            className="border rounded-md w-full p-2 focus:ring-2 focus:ring-green-600 outline-none"
-            placeholder="e.g. 150"
-            required
-          />
-        </div>
-
-        {/* pH */}
-        <div>
-          <label className="block font-medium mb-1">pH Value *</label>
-          <input
-            name="pH"
-            value={formData.pH}
-            onChange={handleChange}
-            type="number"
-            step="any"
-            className="border rounded-md w-full p-2 focus:ring-2 focus:ring-green-600 outline-none"
-            placeholder="e.g. 6.8"
-            required
-          />
-        </div>
-
-        {/* Rainfall */}
-        <div className="sm:col-span-2">
-          <label className="block font-medium mb-1">Rainfall (mm) *</label>
-          <input
-            name="Rainfall"
-            value={formData.Rainfall}
-            onChange={handleChange}
-            type="number"
-            step="any"
-            className="border rounded-md w-full p-2 focus:ring-2 focus:ring-green-600 outline-none"
-            placeholder="e.g. 120"
-            required
-          />
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-6">
+        <InputField
+          label="District Name"
+          name="District_Name"
+          placeholder="e.g. Nashik"
+          colSpan={2}
+          value={formData.District_Name}
+          onChange={handleChange}
+        />
+        <InputField
+          label="Nitrogen (ppm)"
+          name="Nitrogen"
+          type="number"
+          placeholder="45"
+          value={formData.Nitrogen}
+          onChange={handleChange}
+        />
+        <InputField
+          label="Phosphorus (ppm)"
+          name="Phosphorus"
+          type="number"
+          placeholder="35"
+          value={formData.Phosphorus}
+          onChange={handleChange}
+        />
+        <InputField
+          label="Potassium (ppm)"
+          name="Potassium"
+          type="number"
+          placeholder="150"
+          value={formData.Potassium}
+          onChange={handleChange}
+        />
+        <InputField
+          label="pH Level"
+          name="pH"
+          type="number"
+          placeholder="6.8"
+          value={formData.pH}
+          onChange={handleChange}
+        />
+        <InputField
+          label="Annual Rainfall (mm)"
+          name="Rainfall"
+          type="number"
+          placeholder="120"
+          colSpan={2}
+          value={formData.Rainfall}
+          onChange={handleChange}
+        />
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        className={`mt-8 w-full px-6 py-2 rounded-md font-semibold text-white transition ${
-          loading
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-green-700 hover:bg-green-800"
-        }`}
+        className={`mt-10 w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-extrabold text-white text-lg transition-all transform active:scale-[0.98]
+          ${
+            loading
+              ? "bg-gray-300 cursor-not-allowed text-gray-500"
+              : "bg-brand-600 hover:bg-brand-700 shadow-xl shadow-brand-500/30 hover:-translate-y-1"
+          }
+        `}
       >
-        {loading ? "Analyzing..." : "Analyze Soil"}
+        {loading ? (
+          <>
+            <Loader2 className="animate-spin" size={24} />
+            Processing Data...
+          </>
+        ) : (
+          "Run AI Analysis"
+        )}
       </button>
     </form>
   );

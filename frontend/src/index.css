@@ -1,27 +1,62 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand-50: #f0fdf4;
+  --color-brand-100: #dcfce7;
+  --color-brand-500: #22c55e;
+  --color-brand-600: #16a34a;
+  --color-brand-700: #15803d;
+  --color-brand-900: #14532d;
+  
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+  @apply bg-gray-50 text-gray-900;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}
+
+/* Utilities */
+.glass {
+  @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
+}
+
+.glass-dark {
+  @apply bg-gray-900/70 backdrop-blur-lg border border-white/10 shadow-xl;
+}
 
 .nav-link {
-  @apply text-sm font-medium text-gray-700 hover:text-green-700 transition;
+  @apply text-sm font-medium text-gray-600 hover:text-brand-600 transition-colors relative;
 }
 .icon-link {
-  @apply flex items-center gap-1 text-sm text-gray-700 hover:text-green-700 transition;
+  @apply flex items-center gap-1 text-sm text-gray-600 hover:text-brand-600 transition-colors;
 }
 
 .primary-btn {
-  @apply bg-green-700 text-white px-8 py-3 rounded-xl text-lg font-semibold shadow hover:bg-green-800 transition;
+  @apply bg-brand-600 text-white px-6 py-2.5 rounded-xl text-sm font-semibold shadow-md hover:bg-brand-700 hover:shadow-lg transition-all active:scale-95;
 }
 .secondary-btn {
-  @apply border border-green-700 text-green-700 px-8 py-3 rounded-xl text-lg font-semibold hover:bg-green-50 transition;
+  @apply border border-gray-200 bg-white text-gray-700 px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95;
 }
 .cta-btn {
-  @apply inline-block bg-white text-green-700 px-10 py-4 rounded-xl text-lg font-semibold shadow-lg hover:bg-green-100 transition;
-}
-
-/* Smooth font rendering */
-body {
-  -webkit-font-smoothing: antialiased;
-  scroll-behavior: smooth;
+  @apply inline-block bg-white text-brand-700 px-8 py-4 rounded-2xl text-lg font-bold shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1 active:scale-95;
 }
 
 /* Subtle hover glow for premium buttons */
