@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, LogOut, MessageSquare, FileText } from "lucide-react";
+import { Menu, X, LogOut, MessageSquare, FileText, Bot } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -101,6 +101,16 @@ const Navbar = () => {
                 <span className="font-medium">Chat</span>
               </Link>
 
+              <Link
+                to="/avatar-chat"
+                className="icon-link group"
+              >
+                <div className="p-2 rounded-lg bg-gray-50 group-hover:bg-brand-50 transition-colors">
+                  <Bot size={18} className="group-hover:text-brand-600" />
+                </div>
+                <span className="font-medium">Avatar</span>
+              </Link>
+
               {/* User Badge */}
               <div className="px-4 py-2 rounded-xl bg-brand-50 text-brand-700 text-sm font-bold border border-brand-100">
                 Hi, {user.name.split(' ')[0]}
@@ -176,6 +186,13 @@ const Navbar = () => {
                     className="flex items-center gap-3 text-lg font-medium text-gray-700 hover:text-brand-600 py-2 border-b border-gray-100"
                   >
                     <MessageSquare size={20} /> AI Chat
+                  </Link>
+                  <Link
+                    to="/avatar-chat"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 text-lg font-medium text-gray-700 hover:text-brand-600 py-2 border-b border-gray-100"
+                  >
+                    <Bot size={20} /> Avatar Chat
                   </Link>
                   <div className="text-sm text-brand-700 font-semibold py-2">
                     Logged in as {user.name}

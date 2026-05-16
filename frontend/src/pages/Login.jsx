@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuthStore } from "../store/authStore";
 import { useNavigate, Link } from "react-router-dom";
-import { Mail, Lock, Loader2, ArrowRight } from "lucide-react";
+import { Mail, Lock, Loader2, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 
 const Login = () => {
@@ -11,6 +11,7 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,7 +22,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-white -mt-20">
+    <div className="min-h-screen flex bg-white">
       {/* Left Pane - Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 lg:p-24 relative pt-28">
         <Link to="/" className="absolute top-8 left-8 flex items-center gap-2 group text-gray-600 hover:text-brand-700 transition">
@@ -80,7 +81,7 @@ const Login = () => {
 
               <div className="relative group">
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   id="password"
                   className="w-full px-4 pt-6 pb-2 border-2 border-gray-100 rounded-xl outline-none focus:border-brand-500 transition-colors peer bg-gray-50 focus:bg-white"
                   value={password}
@@ -88,13 +89,20 @@ const Login = () => {
                   required
                   placeholder=" "
                 />
-                <label 
+                <label
                   htmlFor="password"
                   className="absolute left-4 top-4 text-gray-400 text-sm origin-[0] -translate-y-3 scale-75 transition-all peer-placeholder-shown:translate-y-0 peer-placeholder-shown:scale-100 peer-focus:-translate-y-3 peer-focus:scale-75 peer-focus:text-brand-600 font-medium"
                 >
                   Password
                 </label>
-                <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 peer-focus:text-brand-600 transition-colors" size={20} />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((p) => !p)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-600 transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
               </div>
             </div>
 

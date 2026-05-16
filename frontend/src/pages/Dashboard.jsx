@@ -1,15 +1,20 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useRef, useState } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
 } from "recharts";
-import { ArrowLeft, Download, Leaf, Sprout, Activity, Droplets, Thermometer, Database } from "lucide-react";
-import jsPDF from "jspdf";
+import { ArrowLeft, Download, Leaf, Sprout, Activity, Droplets, Thermometer, Database, Loader2 } from "lucide-react";
+import { jsPDF } from "jspdf";
+import { toPng } from "html-to-image";
+import toast from "react-hot-toast";
 
 const Dashboard = () => {
-  const location = useLocation(); 
+  const location = useLocation();
   const navigate = useNavigate();
+  const dashboardRef = useRef(null);
+  const [isExporting, setIsExporting] = useState(false);
   const { data } = location.state || {};
 
   const inputData = data?.input_data || {};
@@ -77,18 +82,206 @@ const Dashboard = () => {
     { metric: "pH", user: normalizedInput.pH * 10, optimal: 68 }, // Scale pH for radar visibility relative to NPK
   ];
 
-  const handleDownloadPDF = () => {
-    const pdf = new jsPDF();
-    pdf.setFontSize(22);
-    pdf.setTextColor(22, 163, 74); // brand-600
-    pdf.text("AgroIntelX Soil Report", 20, 20);
-    pdf.setFontSize(12);
-    pdf.setTextColor(55, 65, 81); // gray-700
-    pdf.text(`District: ${normalizedInput.District_Name}`, 20, 35);
-    pdf.text(`Health Score: ${healthScore}/100`, 20, 45);
-    pdf.text(`Recommended Crop: ${aiData.recommended_crop || "N/A"}`, 20, 55);
-    pdf.text(`Recommended Fertilizer: ${aiData.recommended_fertilizer || "N/A"}`, 20, 65);
-    pdf.save("AgroIntelX_Report.pdf");
+  const handleDownloadPDF = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    const toastId = toast.loading("Generating PDF report…");
+    try {
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageW = 210;
+      const pageH = 297;
+      const margin = 18;
+      const contentW = pageW - margin * 2;
+
+      // Helper: auto page-break aware text y
+      const ensureY = (requiredSpace) => {
+        if (y + requiredSpace > pageH - margin) {
+          pdf.addPage();
+          y = margin + 10;
+        }
+      };
+
+      // ---- Page 1: Cover ----
+      pdf.setFillColor(22, 101, 52);
+      pdf.rect(0, 0, pageW, 40, "F");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(22);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("AgroIntelX", margin, 18);
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "normal");
+      pdf.text("Soil Analysis Report", margin, 28);
+      pdf.text(
+        `Generated: ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}`,
+        pageW - margin, 28, { align: "right" }
+      );
+
+      let y = 56;
+
+      // Summary
+      pdf.setTextColor(17, 24, 39);
+      pdf.setFontSize(14);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Analysis Summary", margin, y);
+      y += 10;
+
+      const summaryRows = [
+        ["District",                normalizedInput.District_Name],
+        ["Soil Health Score",       `${healthScore} / 100  (${aiData.soil_health_grade || "N/A"})`],
+        ["Recommended Crop",        aiData.recommended_crop || "N/A"],
+        ["Recommended Fertilizer",  aiData.recommended_fertilizer || "N/A"],
+      ];
+      summaryRows.forEach(([label, value]) => {
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(75, 85, 99);
+        pdf.text(label, margin, y);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(17, 24, 39);
+        pdf.text(String(value), margin + 62, y);
+        y += 9;
+      });
+
+      // NPK table
+      y += 4;
+      ensureY(20);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.setTextColor(17, 24, 39);
+      pdf.text("Soil Input Parameters", margin, y);
+      y += 10;
+
+      const npkRows = [
+        ["Nitrogen (N)",   normalizedInput.Nitrogen],
+        ["Phosphorus (P)", normalizedInput.Phosphorus],
+        ["Potassium (K)",  normalizedInput.Potassium],
+        ["pH Level",       normalizedInput.pH],
+        ["Rainfall",       `${normalizedInput.Rainfall} mm`],
+      ];
+      npkRows.forEach(([label, value], i) => {
+        if (i % 2 === 0) {
+          pdf.setFillColor(243, 244, 246);
+          pdf.rect(margin, y - 5, contentW, 8, "F");
+        }
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(10);
+        pdf.setTextColor(75, 85, 99);
+        pdf.text(label, margin + 2, y);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(17, 24, 39);
+        pdf.text(String(value), margin + 62, y);
+        y += 9;
+      });
+
+      // Top crops
+      if (processedCrops.length > 0) {
+        y += 4;
+        ensureY(20 + processedCrops.length * 10);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(14);
+        pdf.setTextColor(17, 24, 39);
+        pdf.text("Top Crop Predictions", margin, y);
+        y += 10;
+        processedCrops.forEach((c, i) => {
+          const pct = Math.min(Math.max(Number(c.probability) || 0, 0), 100);
+          const barW = (pct / 100) * (contentW - 52);
+          pdf.setFillColor(i === 0 ? 22 : 74, i === 0 ? 163 : 222, i === 0 ? 74 : 128);
+          if (barW > 0) pdf.rect(margin, y - 5, barW, 7, "F");
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(9);
+          pdf.setTextColor(17, 24, 39);
+          pdf.text(`${c.crops}  (${pct}%)`, margin + barW + 3, y);
+          y += 10;
+        });
+      }
+
+      // Top fertilizers
+      if (processedFertilizers.length > 0) {
+        y += 2;
+        ensureY(20 + processedFertilizers.length * 10);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(14);
+        pdf.setTextColor(17, 24, 39);
+        pdf.text("Top Fertilizer Matches", margin, y);
+        y += 10;
+        processedFertilizers.forEach((f) => {
+          const pct = Math.min(Math.max(Number(f.probability) || 0, 0), 100);
+          const barW = (pct / 100) * (contentW - 52);
+          pdf.setFillColor(14, 165, 233);
+          if (barW > 0) pdf.rect(margin, y - 5, barW, 7, "F");
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(9);
+          pdf.setTextColor(17, 24, 39);
+          pdf.text(`${f.name}  (${pct}%)`, margin + barW + 3, y);
+          y += 10;
+        });
+      }
+
+      // AI summary (auto page-break per line)
+      if (aiData.soil_health_analysis) {
+        y += 4;
+        ensureY(24);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(13);
+        pdf.setTextColor(17, 24, 39);
+        pdf.text("AI Diagnostic Summary", margin, y);
+        y += 8;
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(9.5);
+        pdf.setTextColor(55, 65, 81);
+        const wrapped = pdf.splitTextToSize(String(aiData.soil_health_analysis), contentW);
+        wrapped.forEach((line) => {
+          ensureY(6);
+          pdf.text(line, margin, y);
+          y += 5.5;
+        });
+      }
+
+      // ---- Page(s): Dashboard screenshot (html-to-image supports oklch) ----
+      if (dashboardRef.current) {
+        const dataUrl = await toPng(dashboardRef.current, {
+          pixelRatio: 2,
+          backgroundColor: "#f9fafb",
+        });
+
+        // Load the data URL into an Image to get natural dimensions
+        const img = await new Promise((resolve, reject) => {
+          const i = new Image();
+          i.onload = () => resolve(i);
+          i.onerror = reject;
+          i.src = dataUrl;
+        });
+
+        const scale    = img.naturalWidth / pageW;    // px per mm
+        const imgH     = img.naturalHeight / scale;   // total height in mm
+        let srcYpx     = 0;
+        let remaining  = imgH;
+
+        while (remaining > 0.5) {
+          pdf.addPage();
+          const sliceHmm = Math.min(remaining, pageH);
+          const sliceHpx = Math.round(sliceHmm * scale);
+
+          const sliceCanvas = document.createElement("canvas");
+          sliceCanvas.width  = img.naturalWidth;
+          sliceCanvas.height = sliceHpx;
+          const ctx = sliceCanvas.getContext("2d");
+          ctx.drawImage(img, 0, srcYpx, img.naturalWidth, sliceHpx, 0, 0, img.naturalWidth, sliceHpx);
+
+          pdf.addImage(sliceCanvas.toDataURL("image/png"), "PNG", 0, 0, pageW, sliceHmm);
+          srcYpx    += sliceHpx;
+          remaining -= sliceHmm;
+        }
+      }
+
+      pdf.save(`AgroIntelX_${normalizedInput.District_Name}_Report.pdf`);
+      toast.success("PDF downloaded!", { id: toastId });
+    } catch (err) {
+      console.error("PDF export error:", err);
+      toast.error("PDF export failed. Please try again.", { id: toastId });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   // Animation variants
@@ -107,11 +300,11 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 relative overflow-hidden">
-      {/* Decorative Background Elements */}
-      <div className="absolute top-0 left-0 w-full h-96 bg-brand-900 -z-10 rounded-b-[4rem] lg:rounded-b-[8rem]"></div>
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-brand-500/20 rounded-full blur-[120px] -z-10 pointer-events-none"></div>
+      {/* Decorative Background — must NOT be z-negative or bg-gray-50 will hide them */}
+      <div className="absolute top-0 left-0 w-full h-96 bg-brand-900 rounded-b-[4rem] lg:rounded-b-[8rem]"></div>
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-brand-500/20 rounded-full blur-[120px] pointer-events-none"></div>
 
-      <div className="max-w-7xl mx-auto px-6 pt-10">
+      <div className="max-w-7xl mx-auto px-6 pt-10 relative">
         {/* ================= HEADER ================= */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -137,13 +330,15 @@ const Dashboard = () => {
 
           <button
             onClick={handleDownloadPDF}
-            className="px-6 py-2.5 rounded-xl bg-white text-brand-900 font-bold hover:bg-brand-50 hover:shadow-lg hover:shadow-white/20 transition-all flex items-center gap-2"
+            disabled={isExporting}
+            className="px-6 py-2.5 rounded-xl bg-white text-brand-900 font-bold hover:bg-brand-50 hover:shadow-lg hover:shadow-white/20 transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <Download size={18} /> Export PDF Report
+            {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+            {isExporting ? "Generating..." : "Export PDF Report"}
           </button>
         </motion.div>
 
-        <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-8">
+        <motion.div ref={dashboardRef} variants={containerVariants} initial="hidden" animate="show" className="space-y-8">
           
           {/* ================= KPI STRIP ================= */}
           <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">

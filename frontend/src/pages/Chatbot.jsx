@@ -37,13 +37,13 @@ const Chatbot = () => {
   };
 
   // ---------------- Send Message ----------------
-  const sendMessage = async ({ text, reportId, newChat }) => {
+  const sendMessage = async ({ text, reportId, newChat, language }) => {
     // Optimistic UI update: instantly show the user's message
     setMessages((prev) => [
       ...prev,
       { sender: "user", message: text },
     ]);
-    
+
     // Set a localized loading state for the assistant's reply
     setLoadingMessages(true);
 
@@ -51,6 +51,7 @@ const Chatbot = () => {
       const payload = {
         message: text,
         newChat,
+        language: language || "en",
         reportId: reportId || activeSession?.linkedReport || null,
         sessionId: newChat ? null : activeSession?._id,
       };

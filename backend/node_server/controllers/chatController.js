@@ -6,14 +6,23 @@ import { generateChatResponse } from "../services/geminiChatService.js";
 // ======================================================
 // Create or continue chat
 // ======================================================
+const ALLOWED_LANGUAGES = {
+  en: "English", hi: "Hindi", mr: "Marathi",
+  te: "Telugu",  ta: "Tamil", kn: "Kannada",
+  bn: "Bengali", pa: "Punjabi",
+};
+
 export const sendMessage = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { sessionId, message, reportId, newChat } = req.body;
+    const { sessionId, message, reportId, newChat, language } = req.body;
 
     if (!message) {
       return res.status(400).json({ message: "Message is required" });
     }
+
+    // Validate language against allowlist; default to English
+    const langName = ALLOWED_LANGUAGES[language] || "English";
 
     let session;
 
@@ -70,6 +79,7 @@ export const sendMessage = async (req, res) => {
       userMessage: message,
       soilReports,
       chatHistory,
+      language: langName,
     });
 
     const assistantMessage = await ChatMessage.create({

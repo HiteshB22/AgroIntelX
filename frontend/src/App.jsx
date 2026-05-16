@@ -26,6 +26,7 @@ const Signup = React.lazy(() => import("./pages/Signup"));
 const MyReports = React.lazy(() => import("./pages/MyReports"));
 const Chatbot = React.lazy(() => import("./pages/Chatbot"));
 const Dashboard = React.lazy(() => import("./pages/Dashboard"));
+const AvatarChat = React.lazy(() => import("./pages/AvatarChat"));
 
 function Layout() {
   const checkAuth = useAuthStore((state) => state.checkAuth);
@@ -75,47 +76,73 @@ function Layout() {
 
 const router = createBrowserRouter(
   createRoutesFromElements(
-    <Route element={<Layout />}>
-      <Route path="/" element={<Home />} />
-      <Route path="/about" element={<About />} />
-      <Route path="/contact" element={<Contact />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
+    <>
+      <Route element={<Layout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
 
-      <Route
-        path="/soil-analysis"
-        element={
-          <ProtectedRoute>
-            <SoilAnalysis />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/soil-analysis"
+          element={
+            <ProtectedRoute>
+              <SoilAnalysis />
+            </ProtectedRoute>
+          }
+        />
 
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-reports"
+          element={
+            <ProtectedRoute>
+              <MyReports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <Chatbot />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/avatar-chat"
+          element={
+            <ProtectedRoute>
+              <AvatarChat />
+            </ProtectedRoute>
+          }
+        />
+      </Route>
+
+      {/* Auth pages render without Navbar — they have their own branding */}
       <Route
-        path="/dashboard"
+        path="/login"
         element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
+          <Suspense fallback={<LoadingSpinner message="Loading..." />}>
+            <Login />
+          </Suspense>
         }
       />
       <Route
-        path="/my-reports"
+        path="/signup"
         element={
-          <ProtectedRoute>
-            <MyReports />
-          </ProtectedRoute>
+          <Suspense fallback={<LoadingSpinner message="Loading..." />}>
+            <Signup />
+          </Suspense>
         }
       />
-      <Route
-        path="/chat"
-        element={
-          <ProtectedRoute>
-            <Chatbot />
-          </ProtectedRoute>
-        }
-      />
-    </Route>
+    </>
   )
 );
 

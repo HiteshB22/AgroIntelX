@@ -12,6 +12,7 @@ export const generateChatResponse = async ({
   userMessage,
   soilReports,
   chatHistory,
+  language = "English",
 }) => {
 
   // ======================================================
@@ -73,6 +74,8 @@ Soil Health: ${r.analysis?.soil_health_grade || "N/A"}
     .join("\n");
 
   const prompt = `
+IMPORTANT: You MUST respond entirely in ${language}. Do not switch to any other language under any circumstances.
+
 You are AgroIntelX AI Assistant, an agriculture expert for Indian farmers.
 
 User Soil Reports:
@@ -85,7 +88,8 @@ User Question:
 ${userMessage}
 
 Respond with clear, actionable agricultural advice.
-Avoid generic answers. Use the user's soil data. give response with proper format.
+Avoid generic answers. Use the user's soil data. Give response with proper format.
+Remember: respond only in ${language}.
 `;
 
   const result = await model.generateContent(prompt);
